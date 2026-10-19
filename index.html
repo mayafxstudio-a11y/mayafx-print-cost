@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14110f">
+<title>Mayafx Print Cost</title>
+<style>
+:root{
+  --bg:#f6f3ee; --card:#ffffff; --ink:#1d1a17; --muted:#6f6760; --line:#e6e0d8;
+  --accent:#e2562b; --accent-ink:#fff; --good:#1f8a4c; --bad:#c23b2b; --chip:#efe9e1;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14110f; --card:#1f1b18; --ink:#f2ede7; --muted:#a39a91; --line:#332d28;
+    --accent:#ff6a3d; --accent-ink:#14110f; --good:#4cc47f; --bad:#ff6b5a; --chip:#2a2521; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 10px;
+  display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0;letter-spacing:-.01em}
+header h1 span{color:var(--accent)}
+#sync{font-size:12px;padding:5px 10px;border-radius:99px;background:var(--chip);color:var(--muted);border:0;cursor:pointer}
+#sync.ok{color:var(--good)} #sync.warn{color:var(--accent)} #sync.err{color:var(--bad)}
+main{max-width:640px;margin:0 auto;padding:14px 16px 110px}
+.tab{display:none} .tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;font-weight:600}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:11px 12px;min-height:46px}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--chip);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;padding:10px;border-radius:9px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.toggle:first-of-type{border-top:0}
+.toggle span{font-size:15px}
+.toggle small{display:block;color:var(--muted);font-size:12px}
+.switch{position:relative;width:50px;height:30px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch i{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:.2s}
+.switch i:after{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+i{background:var(--accent)}
+.switch input:checked+i:after{transform:translateX(20px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;
+  font:inherit;font-weight:600;padding:13px 16px;min-height:48px;cursor:pointer;background:var(--chip);color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad)}
+.btn.block{width:100%}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.bd{width:100%;border-collapse:collapse;font-size:15px}
+.bd td{padding:7px 0;border-bottom:1px dashed var(--line)}
+.bd td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.bd td small{color:var(--muted);font-size:12px;display:block}
+.bd tr.zero td{color:var(--muted)}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.stat{background:var(--bg);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.hl{background:var(--accent);color:var(--accent-ink)} .stat.hl span{color:inherit;opacity:.8}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.banner{font-size:13px;background:var(--chip);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.banner button{border:0;background:none;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.job{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px}
+.job .top{display:flex;justify-content:space-between;gap:10px}
+.job .ttl{font-weight:600}
+.job .meta{font-size:13px;color:var(--muted)}
+.job .money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.job .money small{display:block;font-size:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.chip{border:0;font:inherit;font-size:12px;font-weight:600;padding:6px 10px;border-radius:99px;background:var(--chip);color:var(--muted);cursor:pointer}
+.chip.done,.chip.paid{color:var(--good)} .chip.printing{color:var(--accent)} .chip.unpaid{color:var(--bad)}
+.chips .sp{flex:1}
+.link{border:0;background:none;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px}
+.link.danger{color:var(--bad)}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+.monthbar{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.monthbar select{flex:1}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;background:var(--card);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
+nav button{border:0;background:none;font:inherit;font-size:11px;color:var(--muted);padding:9px 2px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--accent);font-weight:600}
+#toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:9;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.sum-list{width:100%;border-collapse:collapse}
+.sum-list td{padding:9px 0;border-bottom:1px solid var(--line)}
+.sum-list td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mayafx <span>Print Cost</span></h1>
+  <button id="sync" title="Sync now">Offline</button>
+</header>
+
+<main>
+<!-- ============ CALCULATOR ============ -->
+<section class="tab on" id="t-calc">
+  <div id="editBanner" class="banner" hidden>
+    <span id="editText"></span>
+    <button id="useCurrent">Use current rates</button>
+  </div>
+
+  <div class="card">
+    <div class="seg" id="modeSeg">
+      <button data-mode="cost" class="on">Cost + margin</button>
+      <button data-mode="museum">Per-gram (museum)</button>
+    </div>
+    <div class="row">
+      <div><label>Sr No</label><input id="srNo" type="number" inputmode="numeric"></div>
+      <div><label>Date</label><input id="date" type="date"></div>
+    </div>
+    <label>Project name</label><input id="project" placeholder="e.g. Ganesh relief 175 mm">
+    <label>Client</label><input id="client" list="clientList" placeholder="Client name">
+    <datalist id="clientList"></datalist>
+    <label>Printer</label><select id="printer"></select>
+  </div>
+
+  <div class="card">
+    <h2>Print</h2>
+    <div class="row">
+      <div><label>Filament (g)</label><input id="grams" type="number" inputmode="decimal" min="0" step="any"></div>
+      <div><label>Print time (hrs)</label><input id="printHrs" type="number" inputmode="decimal" min="0" step="any"></div>
+    </div>
+    <h2 style="margin-top:16px">Your time (hrs)</h2>
+    <div class="row3">
+      <div><label>Modeling</label><input id="modelHrs" type="number" inputmode="decimal" min="0" step="any"></div>
+      <div><label>Setup</label><input id="setupHrs" type="number" inputmode="decimal" min="0" step="any"></div>
+      <div><label>Post-proc</label><input id="postHrs" type="number" inputmode="decimal" min="0" step="any"></div>
+    </div>
+    <label>External painting (₹)</label><input id="paint" type="number" inputmode="decimal" min="0" step="any" placeholder="0">
+    <div class="toggle" style="margin-top:8px">
+      <span>Packaging<small id="packHint"></small></span>
+      <label class="switch"><input type="checkbox" id="packaging"><i></i></label>
+    </div>
+    <div class="toggle" id="scanRow" hidden>
+      <span>Scanning fee<small id="scanHint"></small></span>
+      <label class="switch"><input type="checkbox" id="scanning"><i></i></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cost breakdown</h2>
+    <table class="bd" id="breakdown"></table>
+    <div class="totals">
+      <div class="stat"><span>Actual cost</span><b id="oActual">₹0</b></div>
+      <div class="stat"><span>Safety cost (×<span id="oMult">1.5</span>)</span><b id="oSafety">₹0</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Profit</h2>
+    <div id="sellWrap"><label>Selling price (₹)</label><input id="sellingPrice" type="number" inputmode="decimal" min="0" step="any" placeholder="What you charge"></div>
+    <div id="museumPriceWrap" hidden>
+      <table class="bd" id="museumBd"></table>
+    </div>
+    <div class="totals">
+      <div class="stat hl"><span>Selling price</span><b id="oSell">₹0</b></div>
+      <div class="stat"><span>Profit · margin</span><b id="oProfit">₹0</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Status</h2>
+    <div class="row">
+      <div><label>Job</label><select id="jobStatus"><option>Not started</option><option>Printing</option><option>Done</option></select></div>
+      <div><label>Payment</label><select id="payment"><option>Unpaid</option><option>Paid</option></select></div>
+    </div>
+    <label>Notes</label><textarea id="notes" placeholder="Optional"></textarea>
+    <div class="btns">
+      <button class="btn" id="clearBtn">New / clear</button>
+      <button class="btn primary" id="saveBtn">Save job</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ JOBS ============ -->
+<section class="tab" id="t-jobs">
+  <div class="monthbar"><select id="jobMonth"></select></div>
+  <div id="jobList"></div>
+</section>
+
+<!-- ============ PURCHASES ============ -->
+<section class="tab" id="t-buy">
+  <div class="card">
+    <h2>Add purchase</h2>
+    <div class="row">
+      <div><label>Date</label><input id="pDate" type="date"></div>
+      <div><label>Amount (₹)</label><input id="pAmount" type="number" inputmode="decimal" min="0" step="any"></div>
+    </div>
+    <label>Item</label><input id="pItem" placeholder="e.g. PLA white 1 kg">
+    <label>Category</label>
+    <select id="pCat">
+      <option>Filament</option><option>Nozzles / parts</option><option>Tools</option>
+      <option>Paint / finishing</option><option>Packaging</option><option>Other</option>
+    </select>
+    <label>Notes</label><input id="pNotes" placeholder="Optional (shop, qty…)">
+    <button class="btn primary block" id="pSave" style="margin-top:12px">Add purchase</button>
+  </div>
+  <div class="monthbar"><select id="buyMonth"></select></div>
+  <div id="buyList"></div>
+</section>
+
+<!-- ============ SUMMARY ============ -->
+<section class="tab" id="t-sum">
+  <div class="monthbar"><select id="sumMonth"></select></div>
+  <div id="sumBody"></div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="tab" id="t-set">
+  <div class="card">
+    <h2>Connection (Google Sheet)</h2>
+    <label>Web app URL</label><input id="cUrl" placeholder="https://script.google.com/macros/s/…/exec">
+    <label>Secret key</label><input id="cKey" type="password" placeholder="Same as SECRET in Code.gs">
+    <div class="btns">
+      <button class="btn" id="cTest">Test</button>
+      <button class="btn primary" id="cSave">Save &amp; sync</button>
+    </div>
+    <p class="note">Saved only on this device. Your jobs live in your Google Sheet, so a new phone just needs these two fields.</p>
+  </div>
+
+  <div class="card">
+    <h2>Material</h2>
+    <div class="row">
+      <div><label>PLA price (₹/kg)</label><input data-s="filamentPerKg" type="number" step="any"></div>
+      <div><label>Wastage (%)</label><input data-s="wastagePct" type="number" step="any"></div>
+    </div>
+    <div class="toggle"><span>Include wastage</span><label class="switch"><input type="checkbox" data-s="wastageOn"><i></i></label></div>
+  </div>
+
+  <div class="card">
+    <h2>Studio time</h2>
+    <div class="row">
+      <div><label>Rent (₹/month)</label><input data-s="rent" type="number" step="any"></div>
+      <div><label>Maintenance (₹/month)</label><input data-s="maintenance" type="number" step="any"></div>
+    </div>
+    <div class="row">
+      <div><label>Days / month</label><input data-s="daysPerMonth" type="number" step="any"></div>
+      <div><label>Hours / day</label><input data-s="hoursPerDay" type="number" step="any"></div>
+    </div>
+    <p class="note" id="studioRateNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>Electricity</h2>
+    <div class="toggle"><span>Include electricity<small>Off while the owner pays the bill</small></span><label class="switch"><input type="checkbox" data-s="elecOn"><i></i></label></div>
+    <label>Rate (₹/kWh)</label><input data-s="elecRate" type="number" step="any">
+  </div>
+
+  <div class="card">
+    <h2>Your labour (₹/hr)</h2>
+    <div class="row3">
+      <div><label>Modeling</label><input data-s="modelRate" type="number" step="any"></div>
+      <div><label>Setup</label><input data-s="setupRate" type="number" step="any"></div>
+      <div><label>Post-proc</label><input data-s="postRate" type="number" step="any"></div>
+    </div>
+    <div class="row">
+      <div><label>Packaging (₹/job)</label><input data-s="packaging" type="number" step="any"></div>
+      <div><label>Safety multiplier</label><input data-s="safetyMult" type="number" step="any"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Per-gram (museum) pricing</h2>
+    <div class="row">
+      <div><label>Rate (₹/g)</label><input data-s="museumPerGram" type="number" step="any"></div>
+      <div><label>Scanning fee (₹)</label><input data-s="scanFee" type="number" step="any"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Printers</h2>
+    <div id="printerSettings"></div>
+    <p class="note">Lifespan and power are editable estimates, not official specs.</p>
+  </div>
+
+  <div class="card">
+    <h2>Backup</h2>
+    <div class="btns">
+      <button class="btn" id="expJobs">Jobs CSV</button>
+      <button class="btn" id="expBuy">Purchases CSV</button>
+    </div>
+    <button class="btn block danger" id="resetSettings" style="margin-top:10px">Reset rates to defaults</button>
+  </div>
+</section>
+</main>
+
+<nav id="nav">
+  <button data-tab="t-calc" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h2M12 18h2M16 15v3"/></svg>Calculate</button>
+  <button data-tab="t-jobs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Jobs</button>
+  <button data-tab="t-buy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14l-1.5 12h-11z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Purchases</button>
+  <button data-tab="t-sum"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Summary</button>
+  <button data-tab="t-set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.3 3h-4l-.3 2.6a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.3 2.7h4l.3-2.6a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.5.1-.9.1-1.3z"/></svg>Settings</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+/*CALC-START*/
+const PRINTERS = [
+  { id: 'ender',  name: 'Ender 3 V3 SE' },
+  { id: 'a1',     name: 'Bambu Lab A1' },
+  { id: 'a1mini', name: 'Bambu Lab A1 Mini' }
+];
+
+const DEFAULTS = {
+  filamentPerKg: 675, wastagePct: 5, wastageOn: true,
+  rent: 4000, maintenance: 100, daysPerMonth: 30, hoursPerDay: 24,
+  elecOn: false, elecRate: 6.2,
+  modelRate: 200, setupRate: 100, postRate: 50,
+  packaging: 15, safetyMult: 1.5,
+  museumPerGram: 14, scanFee: 600,
+  ender_price: 20000, ender_life: 3000, ender_watts: 100,
+  a1_price: 30000, a1_life: 2500, a1_watts: 130,
+  a1mini_price: 16000, a1mini_life: 3000, a1mini_watts: 100
+};
+
+function num(v) { const n = parseFloat(v); return isFinite(n) ? n : 0; }
+function bool(v) { return v === true || v === 'TRUE' || v === 'true' || v === 1; }
+
+function studioRate(s) {
+  const hrs = num(s.daysPerMonth) * num(s.hoursPerDay);
+  return hrs > 0 ? (num(s.rent) + num(s.maintenance)) / hrs : 0;
+}
+
+function calc(inp, s) {
+  const g = num(inp.grams), ph = num(inp.printHrs);
+  const p = inp.printer || 'ender';
+  const life = num(s[p + '_life']);
+  const r = {};
+  r.filament      = g * num(s.filamentPerKg) / 1000;
+  r.wastage       = bool(s.wastageOn) ? r.filament * num(s.wastagePct) / 100 : 0;
+  r.depreciation  = life > 0 ? ph * num(s[p + '_price']) / life : 0;
+  r.electricity   = bool(s.elecOn) ? ph * num(s[p + '_watts']) / 1000 * num(s.elecRate) : 0;
+  r.studio        = ph * studioRate(s);
+  r.modeling      = num(inp.modelHrs) * num(s.modelRate);
+  r.setup         = num(inp.setupHrs) * num(s.setupRate);
+  r.post          = num(inp.postHrs) * num(s.postRate);
+  r.paint         = num(inp.paint);
+  r.packagingCost = bool(inp.packaging) ? num(s.packaging) : 0;
+  r.actualCost = r.filament + r.wastage + r.depreciation + r.electricity + r.studio +
+                 r.modeling + r.setup + r.post + r.paint + r.packagingCost;
+  r.safetyCost = r.actualCost * num(s.safetyMult);
+  r.scanFee = (inp.mode === 'museum' && bool(inp.scanning)) ? num(s.scanFee) : 0;
+  r.museumPrice = g * num(s.museumPerGram) + r.scanFee;
+  r.sellingPrice = inp.mode === 'museum' ? r.museumPrice : num(inp.sellingPrice);
+  r.profit = r.sellingPrice - r.actualCost;
+  r.marginPct = r.sellingPrice > 0 ? r.profit / r.sellingPrice * 100 : null;
+  return r;
+}
+/*CALC-END*/
+
+// ---------- storage ----------
+const LS = { cfg: 'mpc_cfg', settings: 'mpc_settings', jobs: 'mpc_jobs', buys: 'mpc_buys', queue: 'mpc_queue' };
+function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+let cfg = load(LS.cfg, { url: '', key: '' });
+let settings = Object.assign({}, DEFAULTS, load(LS.settings, {}));
+let jobs = load(LS.jobs, []);
+let buys = load(LS.buys, []);
+let queue = load(LS.queue, []);
+
+let mode = 'cost';
+let editingId = null;      // id of job being edited
+let jobSettings = null;    // rates snapshot used for the job being edited
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => (n < 0 ? '−₹' : '₹') + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const monthOf = d => (d || today()).slice(0, 7);
+const monthLabel = m => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' }); };
+const printerName = id => (PRINTERS.find(p => p.id === id) || {}).name || id;
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
+
+// ---------- sync with Google Sheet ----------
+async function api(payload) {
+  const res = await fetch(cfg.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({}, payload, { key: cfg.key }))
+  });
+  const d = await res.json();
+  if (!d.ok) throw new Error(d.error || 'Request failed');
+  return d;
+}
+
+function setSync(state, text) { const b = $('sync'); b.className = state; b.textContent = text; }
+function refreshSyncLabel() {
+  if (!cfg.url) return setSync('err', 'Not connected');
+  if (queue.length) return setSync('warn', queue.length + ' unsynced');
+  setSync('ok', 'Synced');
+}
+
+function enqueue(op) {
+  // keep only the latest pending change per record
+  if (op.record) queue = queue.filter(q => !(q.action === op.action && q.record && q.record.id === op.record.id));
+  if (op.action === 'saveSettings') queue = queue.filter(q => q.action !== 'saveSettings');
+  queue.push(op); store(LS.queue, queue);
+  flush();
+}
+
+let flushing = false;
+async function flush() {
+  refreshSyncLabel();
+  if (!cfg.url || flushing) return;
+  flushing = true;
+  try {
+    while (queue.length) {
+      if (queue.length) setSync('warn', 'Syncing…');
+      await api(queue[0]);
+      queue.shift(); store(LS.queue, queue);
+    }
+  } catch (e) {
+    console.warn('Sync paused:', e.message);
+  } finally {
+    flushing = false;
+    refreshSyncLabel();
+  }
+}
+
+async function pull() {
+  if (!cfg.url) return refreshSyncLabel();
+  await flush();
+  if (queue.length) return; // still offline; keep local data
+  try {
+    setSync('warn', 'Syncing…');
+    const d = await api({ action: 'getAll' });
+    jobs = d.jobs.map(normJob);
+    buys = d.purchases.map(normBuy);
+    if (d.settings && Object.keys(d.settings).length) {
+      settings = Object.assign({}, DEFAULTS, d.settings);
+      store(LS.settings, settings);
+    } else {
+      enqueue({ action: 'saveSettings', settings });
+    }
+    store(LS.jobs, jobs); store(LS.buys, buys);
+    renderAll();
+    refreshSyncLabel();
+  } catch (e) {
+    setSync('err', 'Sync failed');
+    toast('Could not reach the Sheet: ' + e.message);
+  }
+}
+
+function normJob(j) {
+  const o = Object.assign({}, j);
+  ['srNo', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint', 'filament', 'wastage', 'depreciation',
+   'electricity', 'studio', 'modeling', 'setup', 'post', 'packagingCost', 'scanFee', 'actualCost', 'safetyCost',
+   'sellingPrice', 'profit'].forEach(k => o[k] = num(o[k]));
+  o.marginPct = o.marginPct === '' || o.marginPct == null ? null : num(o.marginPct);
+  o.packaging = bool(o.packaging); o.scanning = bool(o.scanning); o.deleted = bool(o.deleted);
+  o.date = String(o.date || '').slice(0, 10); o.month = o.month ? String(o.month).slice(0, 7) : monthOf(o.date);
+  return o;
+}
+function normBuy(b) {
+  const o = Object.assign({}, b);
+  o.amount = num(o.amount); o.deleted = bool(o.deleted);
+  o.date = String(o.date || '').slice(0, 10); o.month = o.month ? String(o.month).slice(0, 7) : monthOf(o.date);
+  return o;
+}
+
+// ---------- calculator ----------
+function activeSettings() { return jobSettings || settings; }
+
+function readInputs() {
+  return {
+    mode, printer: $('printer').value,
+    grams: $('grams').value, printHrs: $('printHrs').value,
+    modelHrs: $('modelHrs').value, setupHrs: $('setupHrs').value, postHrs: $('postHrs').value,
+    paint: $('paint').value, packaging: $('packaging').checked, scanning: $('scanning').checked,
+    sellingPrice: $('sellingPrice').value
+  };
+}
+
+function fillPrinterSelect() {
+  const s = activeSettings(), cur = $('printer').value;
+  $('printer').innerHTML = PRINTERS.map(p =>
+    `<option value="${p.id}">${esc(p.name)} — ₹${num(s[p.id + '_price']).toLocaleString('en-IN')}</option>`).join('');
+  if (cur) $('printer').value = cur;
+}
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('scanRow').hidden = m !== 'museum';
+  $('sellWrap').hidden = m === 'museum';
+  $('museumPriceWrap').hidden = m !== 'museum';
+  update();
+}
+
+function update() {
+  const s = activeSettings(), inp = readInputs(), r = calc(inp, s);
+  const ph = num(inp.printHrs), p = inp.printer;
+  const life = num(s[p + '_life']);
+  const lines = [
+    ['Filament', `${num(inp.grams)} g × ₹${num(s.filamentPerKg)}/kg`, r.filament],
+    ['Wastage', bool(s.wastageOn) ? `${num(s.wastagePct)}% of filament` : 'off in settings', r.wastage],
+    ['Machine wear', `${ph} h × ₹${(life ? num(s[p + '_price']) / life : 0).toFixed(2)}/h`, r.depreciation],
+    ['Electricity', bool(s.elecOn) ? `${ph} h × ${num(s[p + '_watts'])} W × ₹${num(s.elecRate)}/kWh` : 'off in settings', r.electricity],
+    ['Studio time', `${ph} h × ₹${studioRate(s).toFixed(2)}/h`, r.studio],
+    ['Modeling', `${num(inp.modelHrs)} h × ₹${num(s.modelRate)}`, r.modeling],
+    ['Setup', `${num(inp.setupHrs)} h × ₹${num(s.setupRate)}`, r.setup],
+    ['Post-processing', `${num(inp.postHrs)} h × ₹${num(s.postRate)}`, r.post],
+    ['External painting', 'entered', r.paint],
+    ['Packaging', inp.packaging ? 'fixed' : 'not used', r.packagingCost]
+  ];
+  $('breakdown').innerHTML = lines.map(([n, d, v]) =>
+    `<tr class="${v ? '' : 'zero'}"><td>${n}<small>${esc(d)}</small></td><td>${money(v)}</td></tr>`).join('');
+  $('oActual').textContent = money(r.actualCost);
+  $('oSafety').textContent = money(r.safetyCost);
+  $('oMult').textContent = num(s.safetyMult);
+  $('packHint').textContent = '₹' + num(s.packaging) + ' per job';
+  $('scanHint').textContent = '₹' + num(s.scanFee) + ' when scanning was done';
+  $('museumBd').innerHTML =
+    `<tr><td>Print<small>${num(inp.grams)} g × ₹${num(s.museumPerGram)}/g</small></td><td>${money(num(inp.grams) * num(s.museumPerGram))}</td></tr>` +
+    `<tr class="${r.scanFee ? '' : 'zero'}"><td>Scanning</td><td>${money(r.scanFee)}</td></tr>`;
+  $('oSell').textContent = money(r.sellingPrice);
+  const pr = $('oProfit');
+  pr.innerHTML = money(r.profit) + (r.marginPct == null ? ' · —' : ' · ' + r.marginPct.toFixed(0) + '%');
+  pr.className = r.sellingPrice ? (r.profit >= 0 ? 'pos' : 'neg') : '';
+  return r;
+}
+
+function nextSrNo() { return jobs.reduce((m, j) => Math.max(m, num(j.srNo)), 0) + 1; }
+
+function clearForm() {
+  editingId = null; jobSettings = null;
+  $('editBanner').hidden = true;
+  ['project', 'client', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint', 'sellingPrice', 'notes']
+    .forEach(id => $(id).value = '');
+  $('srNo').value = nextSrNo();
+  $('date').value = today();
+  $('packaging').checked = false; $('scanning').checked = false;
+  $('jobStatus').value = 'Not started'; $('payment').value = 'Unpaid';
+  $('saveBtn').textContent = 'Save job';
+  fillPrinterSelect();
+  setMode('cost');
+}
+
+function openJob(id) {
+  const j = jobs.find(x => x.id === id); if (!j) return;
+  editingId = id;
+  try { jobSettings = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null; } catch (e) { jobSettings = null; }
+  fillPrinterSelect();
+  $('srNo').value = j.srNo; $('date').value = j.date; $('project').value = j.project || ''; $('client').value = j.client || '';
+  $('printer').value = j.printer || 'ender';
+  ['grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint'].forEach(k => $(k).value = j[k] || '');
+  $('sellingPrice').value = j.mode === 'museum' ? '' : (j.sellingPrice || '');
+  $('packaging').checked = j.packaging; $('scanning').checked = j.scanning;
+  $('jobStatus').value = j.jobStatus || 'Not started'; $('payment').value = j.payment || 'Unpaid';
+  $('notes').value = j.notes || '';
+  $('editText').textContent = jobSettings ? `Editing #${j.srNo} · using rates saved with this job` : `Editing #${j.srNo}`;
+  $('useCurrent').hidden = !jobSettings;
+  $('editBanner').hidden = false;
+  $('saveBtn').textContent = 'Update job';
+  setMode(j.mode === 'museum' ? 'museum' : 'cost');
+  showTab('t-calc'); window.scrollTo(0, 0);
+}
+
+function saveJob() {
+  const inp = readInputs();
+  if (!$('project').value.trim()) { toast('Add a project name'); $('project').focus(); return; }
+  const s = activeSettings(), r = calc(inp, s);
+  const existing = editingId ? jobs.find(j => j.id === editingId) : null;
+  const now = new Date().toISOString();
+  const date = $('date').value || today();
+  const rec = Object.assign({}, existing || {}, {
+    id: editingId || uid(),
+    srNo: num($('srNo').value) || nextSrNo(),
+    date, month: monthOf(date),
+    project: $('project').value.trim(), client: $('client').value.trim(),
+    mode, printer: inp.printer,
+    grams: num(inp.grams), printHrs: num(inp.printHrs), modelHrs: num(inp.modelHrs),
+    setupHrs: num(inp.setupHrs), postHrs: num(inp.postHrs), paint: num(inp.paint),
+    packaging: inp.packaging, scanning: mode === 'museum' && inp.scanning,
+    jobStatus: $('jobStatus').value, payment: $('payment').value, notes: $('notes').value.trim(),
+    settingsJson: JSON.stringify(s), deleted: false,
+    createdAt: existing ? existing.createdAt : now, updatedAt: now
+  });
+  ['filament', 'wastage', 'depreciation', 'electricity', 'studio', 'modeling', 'setup', 'post',
+   'packagingCost', 'scanFee', 'actualCost', 'safetyCost', 'sellingPrice', 'profit']
+    .forEach(k => rec[k] = Math.round(r[k] * 100) / 100);
+  rec.marginPct = r.marginPct == null ? '' : Math.round(r.marginPct * 10) / 10;
+
+  if (existing) jobs = jobs.map(j => j.id === rec.id ? rec : j); else jobs.push(rec);
+  store(LS.jobs, jobs);
+  enqueue({ action: 'upsertJob', record: rec });
+  toast(existing ? 'Job updated' : `Job #${rec.srNo} saved`);
+  clearForm(); renderAll();
+}
+
+function patchJob(id, changes) {
+  jobs = jobs.map(j => j.id === id ? Object.assign({}, j, changes, { updatedAt: new Date().toISOString() }) : j);
+  store(LS.jobs, jobs);
+  enqueue({ action: 'upsertJob', record: jobs.find(j => j.id === id) });
+  renderAll();
+}
+
+// ---------- months ----------
+function monthsList() {
+  const set = new Set([monthOf(today())]);
+  jobs.forEach(j => !j.deleted && set.add(j.month));
+  buys.forEach(b => !b.deleted && set.add(b.month));
+  return [...set].filter(Boolean).sort().reverse();
+}
+function fillMonthSelect(id) {
+  const sel = $(id), cur = sel.value || monthOf(today());
+  sel.innerHTML = monthsList().map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+  sel.value = monthsList().includes(cur) ? cur : monthOf(today());
+}
+
+// ---------- render: jobs ----------
+function renderJobs() {
+  fillMonthSelect('jobMonth');
+  const m = $('jobMonth').value;
+  const list = jobs.filter(j => !j.deleted && j.month === m).sort((a, b) => b.srNo - a.srNo);
+  if (!list.length) { $('jobList').innerHTML = `<div class="empty">No jobs in ${monthLabel(m)} yet.</div>`; return; }
+  $('jobList').innerHTML = list.map(j => {
+    const st = (j.jobStatus || 'Not started'), py = (j.payment || 'Unpaid');
+    return `<div class="job">
+      <div class="top">
+        <div><div class="ttl">#${j.srNo} · ${esc(j.project)}</div>
+          <div class="meta">${esc(j.client || '—')} · ${esc(j.date)} · ${esc(printerName(j.printer))}${j.mode === 'museum' ? ' · per-gram' : ''}</div></div>
+        <div class="money">${money(j.sellingPrice)}<small class="${j.profit >= 0 ? 'pos' : 'neg'}">${money(j.profit)}</small></div>
+      </div>
+      <div class="chips">
+        <button class="chip ${st === 'Done' ? 'done' : st === 'Printing' ? 'printing' : ''}" data-act="status" data-id="${j.id}">${esc(st)}</button>
+        <button class="chip ${py === 'Paid' ? 'paid' : 'unpaid'}" data-act="pay" data-id="${j.id}">${esc(py)}</button>
+        <span class="sp"></span>
+        <button class="link" data-act="open" data-id="${j.id}">Open</button>
+        <button class="link danger" data-act="del" data-id="${j.id}">Delete</button>
+      </div></div>`;
+  }).join('');
+}
+
+// ---------- render: purchases ----------
+function renderBuys() {
+  fillMonthSelect('buyMonth');
+  const m = $('buyMonth').value;
+  const list = buys.filter(b => !b.deleted && b.month === m).sort((a, b) => b.date.localeCompare(a.date));
+  const total = list.reduce((s, b) => s + b.amount, 0);
+  if (!list.length) { $('buyList').innerHTML = `<div class="empty">No purchases in ${monthLabel(m)}.</div>`; return; }
+  $('buyList').innerHTML = `<div class="card"><h2>Total spent · ${monthLabel(m)}</h2><b style="font-size:24px">${money(total)}</b></div>` +
+    list.map(b => `<div class="job"><div class="top">
+      <div><div class="ttl">${esc(b.item)}</div><div class="meta">${esc(b.category)} · ${esc(b.date)}${b.notes ? ' · ' + esc(b.notes) : ''}</div></div>
+      <div class="money">${money(b.amount)}</div></div>
+      <div class="chips"><span class="sp"></span><button class="link danger" data-act="delbuy" data-id="${b.id}">Delete</button></div></div>`).join('');
+}
+
+function saveBuy() {
+  const amount = num($('pAmount').value), item = $('pItem').value.trim();
+  if (!item || !amount) { toast('Add item and amount'); return; }
+  const date = $('pDate').value || today(), now = new Date().toISOString();
+  const rec = { id: uid(), date, month: monthOf(date), item, category: $('pCat').value, amount,
+    notes: $('pNotes').value.trim(), deleted: false, createdAt: now, updatedAt: now };
+  buys.push(rec); store(LS.buys, buys);
+  enqueue({ action: 'upsertPurchase', record: rec });
+  $('pItem').value = ''; $('pAmount').value = ''; $('pNotes').value = '';
+  $('buyMonth').value = rec.month;
+  toast('Purchase added'); renderAll();
+}
+
+// ---------- render: summary ----------
+function renderSummary() {
+  fillMonthSelect('sumMonth');
+  const m = $('sumMonth').value;
+  const js = jobs.filter(j => !j.deleted && j.month === m);
+  const bs = buys.filter(b => !b.deleted && b.month === m);
+  const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
+  const revenue = sum(js, j => j.sellingPrice);
+  const received = sum(js.filter(j => j.payment === 'Paid'), j => j.sellingPrice);
+  const pending = revenue - received;
+  const cost = sum(js, j => j.actualCost);
+  const profit = revenue - cost;
+  const spent = sum(bs, b => b.amount);
+  const cash = received - spent;
+  const grams = sum(js, j => j.grams), hrs = sum(js, j => j.printHrs);
+  const byCat = {};
+  bs.forEach(b => byCat[b.category] = (byCat[b.category] || 0) + b.amount);
+  $('sumBody').innerHTML = `
+    <div class="totals" style="margin:0 0 14px">
+      <div class="stat hl"><span>Cash in hand</span><b>${money(cash)}</b></div>
+      <div class="stat"><span>Est. profit</span><b class="${profit >= 0 ? 'pos' : 'neg'}">${money(profit)}</b></div>
+    </div>
+    <div class="card"><h2>Jobs · ${monthLabel(m)}</h2><table class="sum-list">
+      <tr><td>Jobs</td><td>${js.length}</td></tr>
+      <tr><td>Billed (selling price)</td><td>${money(revenue)}</td></tr>
+      <tr><td>Received</td><td class="pos">${money(received)}</td></tr>
+      <tr><td>Pending</td><td class="${pending ? 'neg' : ''}">${money(pending)}</td></tr>
+      <tr><td>Production cost (actual)</td><td>${money(cost)}</td></tr>
+      <tr><td>Filament used</td><td>${grams.toLocaleString('en-IN')} g</td></tr>
+      <tr><td>Print hours</td><td>${hrs.toLocaleString('en-IN')} h</td></tr>
+    </table></div>
+    <div class="card"><h2>Purchases</h2><table class="sum-list">
+      ${Object.keys(byCat).map(c => `<tr><td>${esc(c)}</td><td>${money(byCat[c])}</td></tr>`).join('') || '<tr><td>None</td><td>₹0</td></tr>'}
+      <tr><td><b>Total spent</b></td><td>${money(spent)}</td></tr>
+    </table>
+    <p class="note">Cash in hand = received − purchases. Est. profit = billed − actual production cost.</p></div>`;
+}
+
+// ---------- settings ----------
+function renderSettings() {
+  $('cUrl').value = cfg.url; $('cKey').value = cfg.key;
+  document.querySelectorAll('[data-s]').forEach(el => {
+    const k = el.dataset.s;
+    if (el.type === 'checkbox') el.checked = bool(settings[k]); else el.value = settings[k];
+  });
+  $('printerSettings').innerHTML = PRINTERS.map(p => `
+    <label style="margin-top:14px;font-weight:600;color:var(--ink)">${esc(p.name)}</label>
+    <div class="row3">
+      <div><label>Price ₹</label><input data-sp="${p.id}_price" type="number" step="any" value="${num(settings[p.id + '_price'])}"></div>
+      <div><label>Life (h)</label><input data-sp="${p.id}_life" type="number" step="any" value="${num(settings[p.id + '_life'])}"></div>
+      <div><label>Power W</label><input data-sp="${p.id}_watts" type="number" step="any" value="${num(settings[p.id + '_watts'])}"></div>
+    </div>`).join('');
+  studioNote();
+}
+function studioNote() {
+  $('studioRateNote').textContent = `= ₹${studioRate(settings).toFixed(2)} per print hour  (₹${num(settings.rent) + num(settings.maintenance)} ÷ ${num(settings.daysPerMonth)} days ÷ ${num(settings.hoursPerDay)} h)`;
+}
+let settingsTimer;
+function onSettingChange(e) {
+  const el = e.target, k = el.dataset.s || el.dataset.sp;
+  if (!k) return;
+  settings[k] = el.type === 'checkbox' ? el.checked : num(el.value);
+  store(LS.settings, settings);
+  studioNote();
+  if (!jobSettings) { fillPrinterSelect(); update(); }
+  clearTimeout(settingsTimer);
+  settingsTimer = setTimeout(() => enqueue({ action: 'saveSettings', settings }), 800);
+}
+
+function csv(rows, cols) {
+  const q = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return [cols.join(',')].concat(rows.map(r => cols.map(c => q(r[c])).join(','))).join('\n');
+}
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ---------- tabs ----------
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === id));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
+  if (id === 't-set') renderSettings();
+  window.scrollTo(0, 0);
+}
+function renderAll() {
+  renderJobs(); renderBuys(); renderSummary();
+  $('clientList').innerHTML = [...new Set(jobs.filter(j => j.client).map(j => j.client))].map(c => `<option value="${esc(c)}">`).join('');
+  if (!editingId && !$('project').value) $('srNo').value = nextSrNo();
+}
+
+// ---------- wire up ----------
+document.addEventListener('DOMContentLoaded', () => {
+  $('nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showTab(b.dataset.tab); });
+  $('modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
+  $('t-calc').addEventListener('input', update);
+  $('t-calc').addEventListener('change', update);
+  $('saveBtn').addEventListener('click', saveJob);
+  $('clearBtn').addEventListener('click', clearForm);
+  $('useCurrent').addEventListener('click', () => {
+    jobSettings = null; $('useCurrent').hidden = true;
+    $('editText').textContent = $('editText').textContent.replace('using rates saved with this job', 'using current rates');
+    fillPrinterSelect(); update();
+  });
+
+  $('jobMonth').addEventListener('change', renderJobs);
+  $('buyMonth').addEventListener('change', renderBuys);
+  $('sumMonth').addEventListener('change', renderSummary);
+
+  $('jobList').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const id = b.dataset.id, j = jobs.find(x => x.id === id);
+    if (b.dataset.act === 'open') openJob(id);
+    if (b.dataset.act === 'status') {
+      const order = ['Not started', 'Printing', 'Done'];
+      patchJob(id, { jobStatus: order[(order.indexOf(j.jobStatus) + 1) % 3] });
+    }
+    if (b.dataset.act === 'pay') patchJob(id, { payment: j.payment === 'Paid' ? 'Unpaid' : 'Paid' });
+    if (b.dataset.act === 'del' && confirm(`Delete job #${j.srNo} "${j.project}"?\nIt stays recoverable in the Google Sheet.`)) {
+      patchJob(id, { deleted: true }); if (editingId === id) clearForm(); toast('Job deleted');
+    }
+  });
+  $('buyList').addEventListener('click', e => {
+    const b = e.target.closest('[data-act="delbuy"]'); if (!b) return;
+    const p = buys.find(x => x.id === b.dataset.id);
+    if (!confirm(`Delete purchase "${p.item}"?`)) return;
+    buys = buys.map(x => x.id === p.id ? Object.assign({}, x, { deleted: true, updatedAt: new Date().toISOString() }) : x);
+    store(LS.buys, buys);
+    enqueue({ action: 'upsertPurchase', record: buys.find(x => x.id === p.id) });
+    renderAll(); toast('Purchase deleted');
+  });
+  $('pSave').addEventListener('click', saveBuy);
+
+  $('t-set').addEventListener('input', onSettingChange);
+  $('t-set').addEventListener('change', onSettingChange);
+  $('cTest').addEventListener('click', async () => {
+    const old = cfg; cfg = { url: $('cUrl').value.trim(), key: $('cKey').value };
+    try { await api({ action: 'ping' }); toast('Connected ✓'); } catch (e) { toast('Failed: ' + e.message); }
+    cfg = old;
+  });
+  $('cSave').addEventListener('click', () => {
+    cfg = { url: $('cUrl').value.trim(), key: $('cKey').value }; store(LS.cfg, cfg);
+    toast('Saved — syncing'); pull();
+  });
+  $('sync').addEventListener('click', pull);
+  $('expJobs').addEventListener('click', () => download('mayafx-jobs-' + today() + '.csv',
+    csv(jobs.filter(j => !j.deleted), ['srNo', 'date', 'project', 'client', 'mode', 'printer', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint',
+      'filament', 'wastage', 'depreciation', 'electricity', 'studio', 'modeling', 'setup', 'post', 'packagingCost', 'scanFee',
+      'actualCost', 'safetyCost', 'sellingPrice', 'profit', 'marginPct', 'jobStatus', 'payment', 'notes'])));
+  $('expBuy').addEventListener('click', () => download('mayafx-purchases-' + today() + '.csv',
+    csv(buys.filter(b => !b.deleted), ['date', 'item', 'category', 'amount', 'notes'])));
+  $('resetSettings').addEventListener('click', () => {
+    if (!confirm('Reset all rates to the defaults? Saved jobs keep their own rates.')) return;
+    settings = Object.assign({}, DEFAULTS); store(LS.settings, settings);
+    enqueue({ action: 'saveSettings', settings }); renderSettings(); fillPrinterSelect(); update(); toast('Rates reset');
+  });
+
+  window.addEventListener('online', flush);
+  $('pDate').value = today();
+  clearForm(); renderAll(); refreshSyncLabel();
+  pull();
+});
+</script>
+</body>
+</html>
