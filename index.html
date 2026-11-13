@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14110f">
+<meta name="theme-color" content="#f2f2f2">
 <title>Mayafx Print Cost</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='230 280 540 440'%3E%3Crect x='230' y='280' width='540' height='440' rx='90' fill='%231a1a1a'/%3E%3Cmask id='m'%3E%3Crect width='1000' height='1000' fill='%23fff'/%3E%3Ccircle cx='541' cy='500' r='54'/%3E%3C/mask%3E%3Cg mask='url(%23m)' fill='%23fff'%3E%3Cpolygon points='250,608 375,392 421,471 467,392 593,608 455,608 421,548 386,608'/%3E%3Cpolygon points='500,392 750,392 625,608'/%3E%3C/g%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#f6f3ee; --card:#ffffff; --ink:#1d1a17; --muted:#6f6760; --line:#e6e0d8;
@@ -66,6 +67,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .stat.hl{background:var(--accent);color:var(--accent-ink)} .stat.hl span{color:inherit;opacity:.8}
 .pos{color:var(--good)} .neg{color:var(--bad)}
 .note{font-size:13px;color:var(--muted);margin:8px 0 0}
+[hidden]{display:none!important}
 .banner{font-size:13px;background:var(--chip);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;align-items:center}
 .banner button{border:0;background:none;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
 .job{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px}
@@ -94,14 +96,188 @@ nav button.on{color:var(--accent);font-weight:600}
 .sum-list{width:100%;border-collapse:collapse}
 .sum-list td{padding:9px 0;border-bottom:1px solid var(--line)}
 .sum-list td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+
+/* ---- refresh ---- */
+body{background:radial-gradient(1200px 500px at 100% -10%,rgba(226,86,43,.10),transparent 60%),var(--bg);background-attachment:fixed}
+header{background:color-mix(in srgb,var(--bg) 80%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+header h1{display:flex;align-items:center;gap:9px;font-size:19px}
+.hlogo{width:44px;height:22px;flex:none;color:var(--ink);overflow:visible}
+.hlogo .hole,.slogo .hole{transform-box:fill-box;transform-origin:center}
+header:has(#sync.warn) .hlogo .hole{animation:holePulse 1s ease-in-out infinite}
+.hlogo.printing .lg{animation:printUp .9s steps(10,end) both}
+.hlogo.printing .hole{animation:holePop .5s .8s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes holePulse{50%{transform:scale(.55)}}
+@keyframes printUp{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes holePop{from{transform:scale(0)}to{transform:scale(1)}}
+/* splash: logo gets 3D-printed */
+#splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  transition:opacity .45s ease,visibility .45s;cursor:pointer}
+#splash.out{opacity:0;visibility:hidden}
+.sp-stage{position:relative;width:min(62vw,300px)}
+.slogo{display:block;width:100%;height:auto;color:var(--ink);overflow:visible}
+.slogo .lg{animation:printUp 1.5s .15s steps(22,end) both}
+.slogo .pm{animation:slideM .6s 1.7s cubic-bezier(.2,.9,.3,1) both}
+.slogo .pw{animation:slideW .6s 1.7s cubic-bezier(.2,.9,.3,1) both}
+.slogo .hole{animation:holePop .55s 1.6s cubic-bezier(.3,1.7,.5,1) both}
+@keyframes slideM{50%{transform:translateX(-10px)}}
+@keyframes slideW{50%{transform:translateX(10px)}}
+.nozzle{position:absolute;left:-6%;right:-6%;height:3px;border-radius:3px;bottom:0;
+  background:linear-gradient(90deg,transparent,var(--accent) 20%,#ffb38a 50%,var(--accent) 80%,transparent);
+  box-shadow:0 0 14px 2px rgba(255,106,61,.65);animation:nozzleUp 1.5s .15s steps(22,end) both,fadeOut .3s 1.65s both}
+.nozzle:after{content:"";position:absolute;top:-9px;width:14px;height:10px;left:0;background:var(--ink);clip-path:polygon(0 0,100% 0,65% 100%,35% 100%);
+  animation:nozzleX .07s linear infinite alternate}
+@keyframes nozzleUp{from{bottom:0}to{bottom:100%}}
+@keyframes nozzleX{from{left:4%}to{left:90%}}
+@keyframes fadeOut{to{opacity:0}}
+.sp-text{font-size:20px;letter-spacing:.32em;animation:rise .6s 1.9s both}
+.sp-text span{color:var(--accent);letter-spacing:.08em;font-weight:600}
+.sp-sub{font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:var(--muted);animation:rise .6s 2.05s both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+/* little life elsewhere */
+.tab.on{animation:tabIn .28s ease both}
+@keyframes tabIn{from{opacity:0;transform:translateY(6px)}}
+.stat b{transition:color .2s}
+.stat b.bump{animation:bump .35s ease}
+@keyframes bump{40%{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+.card{border-radius:18px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px -18px rgba(0,0,0,.25)}
+.card h2{display:flex;align-items:center;gap:8px}
+.card h2:before{content:"";width:4px;height:14px;border-radius:2px;background:var(--accent)}
+.stat.hl{background:linear-gradient(135deg,#ff7a45,#e2562b 55%,#b83a1a);box-shadow:0 10px 24px -12px rgba(226,86,43,.8)}
+.btn.primary{background:linear-gradient(135deg,#ff7a45,#e2562b);box-shadow:0 8px 20px -10px rgba(226,86,43,.9)}
+.btn{transition:transform .1s} .btn:active{transform:scale(.97)}
+.pchips{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.pchip{flex:0 0 auto;min-width:150px;max-width:190px;scroll-snap-align:start;text-align:left;font:inherit;color:var(--ink);cursor:pointer;
+  border:1.5px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;transition:.15s}
+.pchip b{font-size:14px;line-height:1.25} .pchip small{font-size:12px;color:var(--muted)}
+.pchip em{font-style:normal;font-size:11px;font-weight:600;align-self:flex-start;padding:2px 8px;border-radius:99px;margin-top:3px;
+  color:#fff;background:linear-gradient(90deg,#e63946,#f4a261,#2a9d8f,#457b9d)}
+.pchip em.no{background:var(--chip);color:var(--muted)}
+.pchip.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--card));box-shadow:0 6px 18px -10px rgba(226,86,43,.7)}
+.swatches{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.swatches i{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18),0 0 0 2px var(--card),0 0 0 3px var(--line)}
+.costbar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--chip);margin:2px 0 8px;gap:2px}
+.costbar span{min-width:3px;transition:flex .3s}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i,.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.bd td small{margin-left:15px}
+.pcard{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px;background:var(--bg)}
+.pcard-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pname{font-weight:700;border:0;background:transparent;padding:4px 0;min-height:36px}
+.unit{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--card);border:1px dashed var(--line)}
+.ubadge{font-size:11px;font-weight:700;color:#fff;padding:3px 9px;border-radius:99px;background:linear-gradient(90deg,#e63946,#f4a261,#2a9d8f,#457b9d)}
+.archived{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);padding:4px 0}
+.job{box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 22px -16px rgba(0,0,0,.25);border-radius:16px}
+nav{background:color-mix(in srgb,var(--card) 85%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+
+/* ===== Mayafx logo theme: mono, 60° slants, circle ===== */
+:root{--bg:#f2f2f2;--card:#fafafa;--ink:#1a1a1a;--muted:#6b6b6b;--line:#dcdcdc;--chip:#e7e7e7;
+  --accent:#1a1a1a;--accent-ink:#f2f2f2;--good:#1f7a45;--bad:#c0392b;--radius:6px;
+  --c1:#1a1a1a;--c2:#4d4d4d;--c3:#808080;--c4:#adadad;--c5:#d4d4d4;--slant:12px;--ease:cubic-bezier(.2,.9,.3,1)}
+@media (prefers-color-scheme: dark){:root{--bg:#121212;--card:#1b1b1b;--ink:#f2f2f2;--muted:#9a9a9a;--line:#2e2e2e;--chip:#262626;
+  --accent:#f2f2f2;--accent-ink:#121212;--good:#5bd08a;--bad:#ff6b5a;--c1:#f2f2f2;--c2:#bdbdbd;--c3:#8a8a8a;--c4:#5c5c5c;--c5:#3a3a3a}}
+html,body{font-family:"Inter","Helvetica Neue",Arial,system-ui,sans-serif}
+body{background:var(--bg)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.5;
+  background:repeating-linear-gradient(120deg,transparent 0 46px,color-mix(in srgb,var(--ink) 4%,transparent) 46px 47px)}
+header{border-bottom:1.5px solid var(--ink)}
+header h1{font-weight:800;letter-spacing:-.02em;text-transform:uppercase;font-size:17px}
+header h1 span{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+#sync{border-radius:99px;border:1.5px solid var(--line);background:transparent}
+#sync.ok:before,#sync.warn:before,#sync.err:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:currentColor;vertical-align:1px}
+#sync.warn:before{animation:holePulse 1s infinite}
+.card,.job{border-radius:var(--radius);border:1.5px solid var(--line);box-shadow:none;background:var(--card);
+  transition:border-color .25s,transform .25s var(--ease),box-shadow .25s}
+.card:hover,.job:hover{border-color:color-mix(in srgb,var(--ink) 35%,var(--line))}
+.card h2{color:var(--ink);font-weight:800;letter-spacing:.14em}
+.card h2:before{width:14px;height:10px;border-radius:0;background:var(--ink);clip-path:polygon(35% 0,100% 0,65% 100%,0 100%)}
+input,select,textarea{border-radius:4px;border:1.5px solid var(--line);background:var(--bg);transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--ink);box-shadow:4px 4px 0 -1px var(--ink)}
+/* segmented control: sliding slanted pill */
+.seg{border-radius:4px;background:var(--chip);position:relative}
+.seg button{border-radius:3px;transition:color .25s}
+.seg button.on{background:var(--ink);color:var(--bg);box-shadow:none;clip-path:polygon(var(--slant) 0,100% 0,calc(100% - var(--slant)) 100%,0 100%);animation:segIn .3s var(--ease)}
+@keyframes segIn{from{clip-path:polygon(50% 0,50% 0,50% 100%,50% 100%)}}
+/* buttons: slanted like the logo, shine + ripple + press */
+.btn{position:relative;overflow:hidden;border-radius:0;font-weight:700;letter-spacing:.02em;
+  clip-path:polygon(var(--slant) 0,100% 0,calc(100% - var(--slant)) 100%,0 100%);
+  transition:transform .15s var(--ease),background .2s,color .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn.primary{background:var(--ink);color:var(--bg);box-shadow:none}
+.btn.primary:after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;
+  background:linear-gradient(120deg,transparent,color-mix(in srgb,var(--bg) 45%,transparent),transparent);transform:skewX(-30deg)}
+.btn.primary:hover:after{animation:shine .7s ease}
+@keyframes shine{to{left:130%}}
+.btn.danger{background:transparent;box-shadow:inset 0 0 0 1.5px var(--bad)}
+.rip{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:.25;transform:scale(0);animation:rip .55s ease-out forwards}
+@keyframes rip{to{transform:scale(1);opacity:0}}
+.chip,.pchip,.seg button,nav button,.link{position:relative;overflow:hidden}
+.chip{border-radius:99px;transition:transform .15s var(--ease),background .2s}
+.chip:active{transform:scale(.92)}
+.chip.done,.chip.paid{background:color-mix(in srgb,var(--good) 14%,transparent)}
+.chip.unpaid{background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.chip.printing{background:var(--ink);color:var(--bg)}
+.chip.printing:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;animation:holePulse .9s infinite}
+.link{border-radius:4px;transition:background .2s}
+.link:hover{background:var(--chip)}
+/* toggle = the logo's circle */
+.switch i{background:var(--chip);border:1.5px solid var(--line);border-radius:99px}
+.switch i:after{background:var(--ink);width:20px;height:20px;top:3px;left:3px;transition:transform .35s var(--ease),background .2s}
+.switch input:checked+i{background:var(--ink);border-color:var(--ink)}
+.switch input:checked+i:after{background:var(--bg);transform:translateX(20px) scale(1.05)}
+/* printer cards */
+.pchip{border-radius:4px;border:1.5px solid var(--line);background:var(--card);transition:transform .2s var(--ease),border-color .2s,background .2s}
+.pchip:hover{transform:translateY(-3px)}
+.pchip.on{background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:5px 5px 0 -1px color-mix(in srgb,var(--ink) 30%,transparent)}
+.pchip.on small{color:color-mix(in srgb,var(--bg) 70%,transparent)}
+.pchip em,.ubadge{background:transparent;color:inherit;border:1.5px solid currentColor;border-radius:99px}
+.pchip em.no{border-color:var(--line);color:var(--muted);background:transparent}
+.pchip.on em.no{color:color-mix(in srgb,var(--bg) 60%,transparent);border-color:color-mix(in srgb,var(--bg) 30%,transparent)}
+.pcard{border-radius:4px;border:1.5px solid var(--line)}
+.unit{border-radius:4px}
+/* totals */
+.stat{border-radius:4px;background:var(--bg);border:1.5px solid var(--line)}
+.stat.hl{background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:none;
+  clip-path:polygon(0 0,100% 0,calc(100% - var(--slant)) 100%,0 100%)}
+.costbar{border-radius:2px;gap:2px;height:12px}
+.costbar span{clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.legend i,.dot{border-radius:50%}
+/* nav */
+nav{border-top:1.5px solid var(--ink)}
+nav button{transition:color .2s}
+nav button svg{transition:transform .3s var(--ease)}
+nav button:active svg{transform:scale(.85)}
+nav button.on{color:var(--ink)}
+nav button.on svg{transform:translateY(-2px)}
+nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--ink);
+  clip-path:polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%);animation:segIn .3s var(--ease)}
+#toast{border-radius:0;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);padding:11px 22px;transform:translate(-50%,10px)}
+#toast.show{transform:translate(-50%,0);transition:.3s var(--ease)}
+.banner{border-radius:4px;border:1.5px dashed var(--ink)}
+/* stagger cards on tab open */
+.tab.on>.card,.tab.on>.job,#jobList>.job,#buyList>*{animation:cardIn .45s var(--ease) both}
+.tab.on>.card:nth-child(2){animation-delay:.05s}.tab.on>.card:nth-child(3){animation-delay:.1s}
+.tab.on>.card:nth-child(4){animation-delay:.15s}.tab.on>.card:nth-child(5){animation-delay:.2s}
+.tab.on>.card:nth-child(n+6){animation-delay:.25s}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px)}}
+.nozzle{background:var(--ink);box-shadow:none;height:2px}
+.sp-text span{color:var(--muted);font-weight:400}
+.sp-text b{font-weight:800}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Mayafx <span>Print Cost</span></h1>
+  <h1><svg viewBox="240 380 520 240" class="hlogo" aria-hidden="true"><defs><mask id="hm"><rect x="0" y="0" width="1000" height="1000" fill="#fff"/><circle class="hole" cx="541" cy="500" r="54" fill="#000"/></mask></defs><g class="lg" mask="url(#hm)" fill="currentColor"><polygon class="pm" points="250,608 375,392 421,471 467,392 593,608 455,608 421,548 386,608"/><polygon class="pw" points="500,392 750,392 625,608"/></g></svg>Mayafx <span>Print Cost</span></h1>
   <button id="sync" title="Sync now">Offline</button>
 </header>
 
+<div id="splash" title="Tap to skip">
+  <div class="sp-stage"><svg viewBox="240 380 520 240" class="slogo" aria-hidden="true"><defs><mask id="sm"><rect x="0" y="0" width="1000" height="1000" fill="#fff"/><circle class="hole" cx="541" cy="500" r="54" fill="#000"/></mask></defs><g class="lg" mask="url(#sm)" fill="currentColor"><polygon class="pm" points="250,608 375,392 421,471 467,392 593,608 455,608 421,548 386,608"/><polygon class="pw" points="500,392 750,392 625,608"/></g></svg><div class="nozzle"></div></div>
+  <div class="sp-text"><b>MAYAFX</b> <span>Print Cost</span></div>
+  <div class="sp-sub">layer by layer</div>
+</div>
 <main>
 <!-- ============ CALCULATOR ============ -->
 <section class="tab on" id="t-calc">
@@ -122,7 +298,7 @@ nav button.on{color:var(--accent);font-weight:600}
     <label>Project name</label><input id="project" placeholder="e.g. Ganesh relief 175 mm">
     <label>Client</label><input id="client" list="clientList" placeholder="Client name">
     <datalist id="clientList"></datalist>
-    <label>Printer</label><select id="printer"></select>
+    <label>Printer</label><input type="hidden" id="printer"><div class="pchips" id="pchips"></div>
   </div>
 
   <div class="card">
@@ -130,6 +306,20 @@ nav button.on{color:var(--accent);font-weight:600}
     <div class="row">
       <div><label>Filament (g)</label><input id="grams" type="number" inputmode="decimal" min="0" step="any"></div>
       <div><label>Print time (hrs)</label><input id="printHrs" type="number" inputmode="decimal" min="0" step="any"></div>
+    </div>
+    <div class="toggle" style="margin-top:8px">
+      <span>Multicolour<small>Adds colour-change purge waste</small></span>
+      <label class="switch"><input type="checkbox" id="multi"><i></i></label>
+    </div>
+    <div id="multiWrap" hidden>
+      <div class="row3">
+        <div><label>Colours</label><input id="colours" type="number" inputmode="numeric" min="1" max="16" step="1" placeholder="4"></div>
+        <div><label>Colour changes</label><input id="changes" type="number" inputmode="numeric" min="0" step="1" placeholder="from slicer"></div>
+        <div><label>Purge (g)</label><input id="purgeG" type="number" inputmode="decimal" min="0" step="any" placeholder="auto"></div>
+      </div>
+      <div class="swatches" id="swatches"></div>
+      <p class="note" id="multiHint"></p>
+      <p class="note" id="unitHint"></p>
     </div>
     <h2 style="margin-top:16px">Your time (hrs)</h2>
     <div class="row3">
@@ -150,6 +340,8 @@ nav button.on{color:var(--accent);font-weight:600}
 
   <div class="card">
     <h2>Cost breakdown</h2>
+    <div class="costbar" id="costbar"></div>
+    <div class="legend"><span><i style="background:var(--c1)"></i>Material</span><span><i style="background:var(--c2)"></i>Machine</span><span><i style="background:var(--c3)"></i>Studio</span><span><i style="background:var(--c4)"></i>Labour</span><span><i style="background:var(--c5)"></i>Extras</span></div>
     <table class="bd" id="breakdown"></table>
     <div class="totals">
       <div class="stat"><span>Actual cost</span><b id="oActual">₹0</b></div>
@@ -271,6 +463,15 @@ nav button.on{color:var(--accent);font-weight:600}
   </div>
 
   <div class="card">
+    <h2>Multicolour</h2>
+    <div class="row">
+      <div><label>Purge per change (g)</label><input data-s="purgePerChange" type="number" step="any"></div>
+      <div><label>Fee per extra colour (₹)</label><input data-s="multiFeePerColour" type="number" step="any"></div>
+    </div>
+    <p class="note">Purge is used only when you leave "Purge (g)" blank. Best: copy the flush + prime tower grams from the slicer.</p>
+  </div>
+
+  <div class="card">
     <h2>Per-gram (museum) pricing</h2>
     <div class="row">
       <div><label>Rate (₹/g)</label><input data-s="museumPerGram" type="number" step="any"></div>
@@ -279,9 +480,10 @@ nav button.on{color:var(--accent);font-weight:600}
   </div>
 
   <div class="card">
-    <h2>Printers</h2>
+    <h2>Printers &amp; colour units</h2>
     <div id="printerSettings"></div>
-    <p class="note">Lifespan and power are editable estimates, not official specs.</p>
+    <button class="btn block" id="addPrinter" style="margin-top:12px">＋ Add printer</button>
+    <p class="note">Removed printers are only hidden, so old jobs keep their name. Life and power are editable estimates. A colour unit (AMS, CFS) adds its own wear only on multicolour jobs.</p>
   </div>
 
   <div class="card">
@@ -309,7 +511,8 @@ nav button.on{color:var(--accent);font-weight:600}
 const PRINTERS = [
   { id: 'ender',  name: 'Ender 3 V3 SE' },
   { id: 'a1',     name: 'Bambu Lab A1' },
-  { id: 'a1mini', name: 'Bambu Lab A1 Mini' }
+  { id: 'a1mini', name: 'Bambu Lab A1 Mini' },
+  { id: 'sparkx', name: 'Creality SPARKX i7 (CFS Lite)' }
 ];
 
 const DEFAULTS = {
@@ -321,11 +524,24 @@ const DEFAULTS = {
   museumPerGram: 14, scanFee: 600,
   ender_price: 20000, ender_life: 3000, ender_watts: 100,
   a1_price: 30000, a1_life: 2500, a1_watts: 130,
-  a1mini_price: 16000, a1mini_life: 3000, a1mini_watts: 100
+  a1mini_price: 16000, a1mini_life: 3000, a1mini_watts: 100,
+  sparkx_price: 38999, sparkx_life: 3000, sparkx_watts: 120,
+  purgePerChange: 1, multiFeePerColour: 0
 };
 
 function num(v) { const n = parseFloat(v); return isFinite(n) ? n : 0; }
 function bool(v) { return v === true || v === 'TRUE' || v === 'true' || v === 1; }
+
+// Printers are a list saved in settings.printersJson. Old jobs (saved before this)
+// have no list, so one is built from their old price/life/watts keys -> same numbers.
+const LEGACY_UNITS = { sparkx: { name: 'CFS Lite', price: 0, life: 3000, slots: 4 } };
+function getPrinters(s) {
+  if (s && s.printersJson) { try { const l = JSON.parse(s.printersJson); if (Array.isArray(l) && l.length) return l; } catch (e) {} }
+  return PRINTERS.map(p => ({ id: p.id, name: p.name,
+    price: num(s[p.id + '_price']), life: num(s[p.id + '_life']), watts: num(s[p.id + '_watts']),
+    unit: LEGACY_UNITS[p.id] ? Object.assign({}, LEGACY_UNITS[p.id]) : null, archived: false }));
+}
+function findPrinter(s, id) { const l = getPrinters(s); return l.find(p => p.id === id) || l[0] || { id, name: id, price: 0, life: 0, watts: 0 }; }
 
 function studioRate(s) {
   const hrs = num(s.daysPerMonth) * num(s.hoursPerDay);
@@ -334,21 +550,28 @@ function studioRate(s) {
 
 function calc(inp, s) {
   const g = num(inp.grams), ph = num(inp.printHrs);
-  const p = inp.printer || 'ender';
-  const life = num(s[p + '_life']);
+  const P = findPrinter(s, inp.printer || 'ender');
+  const life = num(P.life);
   const r = {};
   r.filament      = g * num(s.filamentPerKg) / 1000;
   r.wastage       = bool(s.wastageOn) ? r.filament * num(s.wastagePct) / 100 : 0;
-  r.depreciation  = life > 0 ? ph * num(s[p + '_price']) / life : 0;
-  r.electricity   = bool(s.elecOn) ? ph * num(s[p + '_watts']) / 1000 * num(s.elecRate) : 0;
+  r.depreciation  = life > 0 ? ph * num(P.price) / life : 0;
+  r.electricity   = bool(s.elecOn) ? ph * num(P.watts) / 1000 * num(s.elecRate) : 0;
   r.studio        = ph * studioRate(s);
   r.modeling      = num(inp.modelHrs) * num(s.modelRate);
   r.setup         = num(inp.setupHrs) * num(s.setupRate);
   r.post          = num(inp.postHrs) * num(s.postRate);
   r.paint         = num(inp.paint);
   r.packagingCost = bool(inp.packaging) ? num(s.packaging) : 0;
+  // multicolour (all zero when off, so old jobs are unchanged)
+  const multi = bool(inp.multi);
+  r.purgeGrams = !multi ? 0 : (String(inp.purgeG ?? '').trim() !== '' ? num(inp.purgeG) : num(inp.changes) * num(s.purgePerChange));
+  r.purge      = r.purgeGrams * num(s.filamentPerKg) / 1000;
+  r.multiFee   = multi ? Math.max(0, num(inp.colours) - 1) * num(s.multiFeePerColour) : 0;
+  const U = P.unit;   // AMS / CFS: wears only on multicolour jobs
+  r.unitWear   = multi && U && num(U.life) > 0 ? ph * num(U.price) / num(U.life) : 0;
   r.actualCost = r.filament + r.wastage + r.depreciation + r.electricity + r.studio +
-                 r.modeling + r.setup + r.post + r.paint + r.packagingCost;
+                 r.modeling + r.setup + r.post + r.paint + r.packagingCost + r.purge + r.multiFee + r.unitWear;
   r.safetyCost = r.actualCost * num(s.safetyMult);
   r.scanFee = (inp.mode === 'museum' && bool(inp.scanning)) ? num(s.scanFee) : 0;
   r.museumPrice = g * num(s.museumPerGram) + r.scanFee;
@@ -381,7 +604,14 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const monthOf = d => (d || today()).slice(0, 7);
 const monthLabel = m => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' }); };
-const printerName = id => (PRINTERS.find(p => p.id === id) || {}).name || id;
+const printerName = id => (getPrinters(settings).find(p => p.id === id) || PRINTERS.find(p => p.id === id) || {}).name || id;
+const SWATCH = ['#e63946', '#f4a261', '#2a9d8f', '#457b9d', '#8e44ad', '#f1c40f', '#1d3557', '#ff70a6'];
+function jobPrinterName(j) {
+  try { const s = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null;
+    const p = s && getPrinters(s).find(x => x.id === j.printer); if (p) return p.name; } catch (e) {}
+  return printerName(j.printer);
+}
+const PCOL = { mat: 'var(--c1)', mach: 'var(--c2)', studio: 'var(--c3)', lab: 'var(--c4)', extra: 'var(--c5)' };
 
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
@@ -463,6 +693,10 @@ function normJob(j) {
   o.marginPct = o.marginPct === '' || o.marginPct == null ? null : num(o.marginPct);
   o.packaging = bool(o.packaging); o.scanning = bool(o.scanning); o.deleted = bool(o.deleted);
   o.date = String(o.date || '').slice(0, 10); o.month = o.month ? String(o.month).slice(0, 7) : monthOf(o.date);
+  let m = null; try { m = o.settingsJson ? JSON.parse(o.settingsJson)._multi : null; } catch (e) {}
+  o.multi = !!m;
+  o.colours = m ? num(m.colours) : 0; o.changes = m ? num(m.changes) : 0;
+  o.purgeG = m ? num(m.purgeG) : 0; o.purgeManual = m ? bool(m.purgeManual) : false;
   return o;
 }
 function normBuy(b) {
@@ -481,15 +715,24 @@ function readInputs() {
     grams: $('grams').value, printHrs: $('printHrs').value,
     modelHrs: $('modelHrs').value, setupHrs: $('setupHrs').value, postHrs: $('postHrs').value,
     paint: $('paint').value, packaging: $('packaging').checked, scanning: $('scanning').checked,
-    sellingPrice: $('sellingPrice').value
+    sellingPrice: $('sellingPrice').value,
+    multi: $('multi').checked, colours: $('colours').value, changes: $('changes').value, purgeG: $('purgeG').value
   };
 }
 
 function fillPrinterSelect() {
-  const s = activeSettings(), cur = $('printer').value;
-  $('printer').innerHTML = PRINTERS.map(p =>
-    `<option value="${p.id}">${esc(p.name)} — ₹${num(s[p.id + '_price']).toLocaleString('en-IN')}</option>`).join('');
-  if (cur) $('printer').value = cur;
+  const s = activeSettings(), list = getPrinters(s);
+  let cur = $('printer').value;
+  if (!list.some(p => p.id === cur && !p.archived)) {
+    if (!(cur && list.some(p => p.id === cur))) cur = (list.find(p => !p.archived) || list[0] || {}).id || '';
+  }
+  $('printer').value = cur;
+  $('pchips').innerHTML = list.filter(p => !p.archived || p.id === cur).map(p => {
+    const wear = num(p.life) ? num(p.price) / num(p.life) : 0;
+    return `<button type="button" class="pchip ${p.id === cur ? 'on' : ''}" data-pid="${esc(p.id)}">
+      <b>${esc(p.name)}</b><small>₹${wear.toFixed(1)}/h wear · ${num(p.watts)} W</small>
+      ${p.unit ? `<em>${esc(p.unit.name || 'Colour unit')} · ${num(p.unit.slots)} slots</em>` : '<em class="no">Single colour</em>'}
+    </button>`; }).join('');
 }
 
 function setMode(m) {
@@ -503,23 +746,41 @@ function setMode(m) {
 
 function update() {
   const s = activeSettings(), inp = readInputs(), r = calc(inp, s);
-  const ph = num(inp.printHrs), p = inp.printer;
-  const life = num(s[p + '_life']);
+  const ph = num(inp.printHrs), P = findPrinter(s, inp.printer);
+  const life = num(P.life), U = P.unit;
   const lines = [
-    ['Filament', `${num(inp.grams)} g × ₹${num(s.filamentPerKg)}/kg`, r.filament],
-    ['Wastage', bool(s.wastageOn) ? `${num(s.wastagePct)}% of filament` : 'off in settings', r.wastage],
-    ['Machine wear', `${ph} h × ₹${(life ? num(s[p + '_price']) / life : 0).toFixed(2)}/h`, r.depreciation],
-    ['Electricity', bool(s.elecOn) ? `${ph} h × ${num(s[p + '_watts'])} W × ₹${num(s.elecRate)}/kWh` : 'off in settings', r.electricity],
-    ['Studio time', `${ph} h × ₹${studioRate(s).toFixed(2)}/h`, r.studio],
-    ['Modeling', `${num(inp.modelHrs)} h × ₹${num(s.modelRate)}`, r.modeling],
-    ['Setup', `${num(inp.setupHrs)} h × ₹${num(s.setupRate)}`, r.setup],
-    ['Post-processing', `${num(inp.postHrs)} h × ₹${num(s.postRate)}`, r.post],
-    ['External painting', 'entered', r.paint],
-    ['Packaging', inp.packaging ? 'fixed' : 'not used', r.packagingCost]
+    ['Filament', `${num(inp.grams)} g × ₹${num(s.filamentPerKg)}/kg`, r.filament, 'mat'],
+    ['Wastage', bool(s.wastageOn) ? `${num(s.wastagePct)}% of filament` : 'off in settings', r.wastage, 'mat'],
+    ['Machine wear', `${ph} h × ₹${(life ? num(P.price) / life : 0).toFixed(2)}/h`, r.depreciation, 'mach'],
+    ['Electricity', bool(s.elecOn) ? `${ph} h × ${num(P.watts)} W × ₹${num(s.elecRate)}/kWh` : 'off in settings', r.electricity, 'mach'],
+    ['Studio time', `${ph} h × ₹${studioRate(s).toFixed(2)}/h`, r.studio, 'studio'],
+    ['Modeling', `${num(inp.modelHrs)} h × ₹${num(s.modelRate)}`, r.modeling, 'lab'],
+    ['Setup', `${num(inp.setupHrs)} h × ₹${num(s.setupRate)}`, r.setup, 'lab'],
+    ['Post-processing', `${num(inp.postHrs)} h × ₹${num(s.postRate)}`, r.post, 'lab'],
+    ['External painting', 'entered', r.paint, 'extra'],
+    ['Packaging', inp.packaging ? 'fixed' : 'not used', r.packagingCost, 'extra']
   ];
-  $('breakdown').innerHTML = lines.map(([n, d, v]) =>
-    `<tr class="${v ? '' : 'zero'}"><td>${n}<small>${esc(d)}</small></td><td>${money(v)}</td></tr>`).join('');
-  $('oActual').textContent = money(r.actualCost);
+  if (inp.multi) {
+    lines.splice(2, 0, ['Colour purge', `${+r.purgeGrams.toFixed(2)} g × ₹${num(s.filamentPerKg)}/kg`, r.purge, 'mat']);
+    if (U) lines.splice(4, 0, [`${U.name || 'Colour unit'} wear`, `${ph} h × ₹${(num(U.life) ? num(U.price) / num(U.life) : 0).toFixed(2)}/h`, r.unitWear, 'mach']);
+    lines.push(['Multicolour fee', `${Math.max(0, num(inp.colours) - 1)} extra colour(s) × ₹${num(s.multiFeePerColour)}`, r.multiFee, 'extra']);
+  }
+  $('multiWrap').hidden = !inp.multi;
+  const nc = Math.min(16, Math.max(0, Math.round(num(inp.colours))));
+  $('swatches').innerHTML = Array.from({ length: nc }, (_, i) => `<i style="background:${SWATCH[i % SWATCH.length]}"></i>`).join('');
+  $('unitHint').textContent = !U ? 'This printer has no colour unit — manual filament swaps.'
+    : nc > num(U.slots) ? `⚠ ${nc} colours but ${U.name} has ${num(U.slots)} slots` : `${U.name} · ${num(U.slots)} slots`;
+  $('unitHint').className = 'note' + (U && nc > num(U.slots) ? ' neg' : '');
+  fillPrinterSelect();
+  const tot = r.actualCost || 1;
+  $('costbar').innerHTML = lines.filter(l => l[2] > 0).map(l =>
+    `<span title="${esc(l[0])}" style="flex:${l[2] / tot};background:${PCOL[l[3]]}"></span>`).join('');
+  $('multiHint').textContent = String(inp.purgeG).trim() === ''
+    ? `Auto: ${num(inp.changes)} changes × ${num(s.purgePerChange)} g = ${+r.purgeGrams.toFixed(2)} g`
+    : 'Using slicer purge grams';
+  $('breakdown').innerHTML = lines.map(([n, d, v, c]) =>
+    `<tr class="${v ? '' : 'zero'}"><td><i class="dot" style="background:${PCOL[c]}"></i>${esc(n)}<small>${esc(d)}</small></td><td>${money(v)}</td></tr>`).join('');
+  bumpText('oActual', money(r.actualCost));
   $('oSafety').textContent = money(r.safetyCost);
   $('oMult').textContent = num(s.safetyMult);
   $('packHint').textContent = '₹' + num(s.packaging) + ' per job';
@@ -534,6 +795,10 @@ function update() {
   return r;
 }
 
+function bumpText(id, t) {
+  const el = $(id); if (el.textContent === t) return;
+  el.textContent = t; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
 function nextSrNo() { return jobs.reduce((m, j) => Math.max(m, num(j.srNo)), 0) + 1; }
 
 function clearForm() {
@@ -544,6 +809,7 @@ function clearForm() {
   $('srNo').value = nextSrNo();
   $('date').value = today();
   $('packaging').checked = false; $('scanning').checked = false;
+  $('multi').checked = false; ['colours', 'changes', 'purgeG'].forEach(id => $(id).value = '');
   $('jobStatus').value = 'Not started'; $('payment').value = 'Unpaid';
   $('saveBtn').textContent = 'Save job';
   fillPrinterSelect();
@@ -554,12 +820,17 @@ function openJob(id) {
   const j = jobs.find(x => x.id === id); if (!j) return;
   editingId = id;
   try { jobSettings = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null; } catch (e) { jobSettings = null; }
+  if (jobSettings) delete jobSettings._multi;
   fillPrinterSelect();
   $('srNo').value = j.srNo; $('date').value = j.date; $('project').value = j.project || ''; $('client').value = j.client || '';
   $('printer').value = j.printer || 'ender';
   ['grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint'].forEach(k => $(k).value = j[k] || '');
   $('sellingPrice').value = j.mode === 'museum' ? '' : (j.sellingPrice || '');
   $('packaging').checked = j.packaging; $('scanning').checked = j.scanning;
+  $('multi').checked = !!j.multi;
+  $('colours').value = j.multi ? (j.colours || '') : '';
+  $('changes').value = j.multi ? (j.changes || '') : '';
+  $('purgeG').value = j.multi && j.purgeManual ? j.purgeG : '';
   $('jobStatus').value = j.jobStatus || 'Not started'; $('payment').value = j.payment || 'Unpaid';
   $('notes').value = j.notes || '';
   $('editText').textContent = jobSettings ? `Editing #${j.srNo} · using rates saved with this job` : `Editing #${j.srNo}`;
@@ -587,11 +858,15 @@ function saveJob() {
     setupHrs: num(inp.setupHrs), postHrs: num(inp.postHrs), paint: num(inp.paint),
     packaging: inp.packaging, scanning: mode === 'museum' && inp.scanning,
     jobStatus: $('jobStatus').value, payment: $('payment').value, notes: $('notes').value.trim(),
-    settingsJson: JSON.stringify(s), deleted: false,
+    multi: !!inp.multi, colours: inp.multi ? num(inp.colours) : 0, changes: inp.multi ? num(inp.changes) : 0,
+    purgeG: Math.round(r.purgeGrams * 100) / 100, purgeManual: !!inp.multi && String(inp.purgeG).trim() !== '',
+    settingsJson: JSON.stringify(Object.assign({}, s, { _multi: inp.multi ? {
+      colours: num(inp.colours), changes: num(inp.changes), purgeG: Math.round(r.purgeGrams * 100) / 100,
+      purgeManual: String(inp.purgeG).trim() !== '' } : null })), deleted: false,
     createdAt: existing ? existing.createdAt : now, updatedAt: now
   });
   ['filament', 'wastage', 'depreciation', 'electricity', 'studio', 'modeling', 'setup', 'post',
-   'packagingCost', 'scanFee', 'actualCost', 'safetyCost', 'sellingPrice', 'profit']
+   'packagingCost', 'scanFee', 'actualCost', 'safetyCost', 'sellingPrice', 'profit', 'purge', 'multiFee', 'unitWear']
     .forEach(k => rec[k] = Math.round(r[k] * 100) / 100);
   rec.marginPct = r.marginPct == null ? '' : Math.round(r.marginPct * 10) / 10;
 
@@ -599,6 +874,7 @@ function saveJob() {
   store(LS.jobs, jobs);
   enqueue({ action: 'upsertJob', record: rec });
   toast(existing ? 'Job updated' : `Job #${rec.srNo} saved`);
+  const hl = document.querySelector('.hlogo'); hl.classList.remove('printing'); void hl.offsetWidth; hl.classList.add('printing');
   clearForm(); renderAll();
 }
 
@@ -633,7 +909,7 @@ function renderJobs() {
     return `<div class="job">
       <div class="top">
         <div><div class="ttl">#${j.srNo} · ${esc(j.project)}</div>
-          <div class="meta">${esc(j.client || '—')} · ${esc(j.date)} · ${esc(printerName(j.printer))}${j.mode === 'museum' ? ' · per-gram' : ''}</div></div>
+          <div class="meta">${esc(j.client || '—')} · ${esc(j.date)} · ${esc(jobPrinterName(j))}${j.mode === 'museum' ? ' · per-gram' : ''}${j.multi ? ' · ' + (j.colours || '?') + ' colours' : ''}</div></div>
         <div class="money">${money(j.sellingPrice)}<small class="${j.profit >= 0 ? 'pos' : 'neg'}">${money(j.profit)}</small></div>
       </div>
       <div class="chips">
@@ -718,21 +994,60 @@ function renderSettings() {
     const k = el.dataset.s;
     if (el.type === 'checkbox') el.checked = bool(settings[k]); else el.value = settings[k];
   });
-  $('printerSettings').innerHTML = PRINTERS.map(p => `
-    <label style="margin-top:14px;font-weight:600;color:var(--ink)">${esc(p.name)}</label>
-    <div class="row3">
-      <div><label>Price ₹</label><input data-sp="${p.id}_price" type="number" step="any" value="${num(settings[p.id + '_price'])}"></div>
-      <div><label>Life (h)</label><input data-sp="${p.id}_life" type="number" step="any" value="${num(settings[p.id + '_life'])}"></div>
-      <div><label>Power W</label><input data-sp="${p.id}_watts" type="number" step="any" value="${num(settings[p.id + '_watts'])}"></div>
-    </div>`).join('');
+  renderPrinterSettings();
   studioNote();
+}
+function renderPrinterSettings() {
+  const list = getPrinters(settings);
+  const f = (i, k, label, v, type) => `<div><label>${label}</label><input data-pi="${i}" data-pf="${k}" type="${type || 'number'}" step="any" value="${esc(v)}"></div>`;
+  const card = (p, i) => p.archived ? '' : `
+    <div class="pcard">
+      <div class="pcard-top"><input class="pname" data-pi="${i}" data-pf="name" value="${esc(p.name)}" aria-label="Printer name">
+        <button class="link danger" data-pact="archive" data-pi="${i}">Remove</button></div>
+      <div class="row3">${f(i, 'price', 'Price ₹', num(p.price))}${f(i, 'life', 'Life (h)', num(p.life))}${f(i, 'watts', 'Power W', num(p.watts))}</div>
+      ${p.unit ? `<div class="unit">
+        <div class="pcard-top"><span class="ubadge">Colour unit</span><button class="link danger" data-pact="rmunit" data-pi="${i}">Remove unit</button></div>
+        <div class="row">${f(i, 'unit.name', 'Name', p.unit.name, 'text')}${f(i, 'unit.slots', 'Slots', num(p.unit.slots))}</div>
+        <div class="row">${f(i, 'unit.price', 'Price ₹ (0 if bundled)', num(p.unit.price))}${f(i, 'unit.life', 'Life (h)', num(p.unit.life))}</div>
+      </div>` : `<button class="link" data-pact="addunit" data-pi="${i}">＋ Add colour unit (AMS / CFS)</button>`}
+    </div>`;
+  const arch = list.map((p, i) => p.archived ? `<div class="archived">${esc(p.name)}<button class="link" data-pact="restore" data-pi="${i}">Restore</button></div>` : '').join('');
+  $('printerSettings').innerHTML = list.map(card).join('') + (arch ? `<label>Removed</label>${arch}` : '');
+}
+function savePrinters(list, rerender) {
+  settings.printersJson = JSON.stringify(list);
+  store(LS.settings, settings);
+  if (rerender) renderPrinterSettings();
+  if (!jobSettings) { fillPrinterSelect(); update(); }
+  clearTimeout(settingsTimer);
+  settingsTimer = setTimeout(() => enqueue({ action: 'saveSettings', settings }), 800);
+}
+function onPrinterAction(e) {
+  const b = e.target.closest('[data-pact]'); if (!b) return;
+  const list = getPrinters(settings), p = list[+b.dataset.pi], a = b.dataset.pact;
+  if (a === 'archive') {
+    if (list.filter(x => !x.archived).length < 2) return toast('Keep at least one printer');
+    if (!confirm(`Remove "${p.name}"? Old jobs keep it; you can restore it later.`)) return;
+    p.archived = true;
+  }
+  if (a === 'restore') p.archived = false;
+  if (a === 'addunit') p.unit = { name: 'AMS Lite', price: 0, life: 3000, slots: 4 };
+  if (a === 'rmunit') p.unit = null;
+  savePrinters(list, true);
 }
 function studioNote() {
   $('studioRateNote').textContent = `= ₹${studioRate(settings).toFixed(2)} per print hour  (₹${num(settings.rent) + num(settings.maintenance)} ÷ ${num(settings.daysPerMonth)} days ÷ ${num(settings.hoursPerDay)} h)`;
 }
 let settingsTimer;
 function onSettingChange(e) {
-  const el = e.target, k = el.dataset.s || el.dataset.sp;
+  const el = e.target;
+  if (el.dataset.pf) {
+    const list = getPrinters(settings), p = list[+el.dataset.pi], path = el.dataset.pf.split('.');
+    const v = el.type === 'text' ? el.value : num(el.value);
+    if (path[0] === 'unit') { if (p.unit) p.unit[path[1]] = v; } else p[path[0]] = v;
+    return savePrinters(list, false);
+  }
+  const k = el.dataset.s || el.dataset.sp;
   if (!k) return;
   settings[k] = el.type === 'checkbox' ? el.checked : num(el.value);
   store(LS.settings, settings);
@@ -806,6 +1121,16 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll(); toast('Purchase deleted');
   });
   $('pSave').addEventListener('click', saveBuy);
+  $('printerSettings').addEventListener('click', onPrinterAction);
+  $('addPrinter').addEventListener('click', () => {
+    const list = getPrinters(settings);
+    list.push({ id: 'p' + uid(), name: 'New printer', price: 20000, life: 3000, watts: 100, unit: null, archived: false });
+    savePrinters(list, true); toast('Printer added — set its name and price');
+  });
+  $('pchips').addEventListener('click', e => {
+    const b = e.target.closest('[data-pid]'); if (!b) return;
+    $('printer').value = b.dataset.pid; update();
+  });
 
   $('t-set').addEventListener('input', onSettingChange);
   $('t-set').addEventListener('change', onSettingChange);
@@ -822,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('expJobs').addEventListener('click', () => download('mayafx-jobs-' + today() + '.csv',
     csv(jobs.filter(j => !j.deleted), ['srNo', 'date', 'project', 'client', 'mode', 'printer', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint',
       'filament', 'wastage', 'depreciation', 'electricity', 'studio', 'modeling', 'setup', 'post', 'packagingCost', 'scanFee',
-      'actualCost', 'safetyCost', 'sellingPrice', 'profit', 'marginPct', 'jobStatus', 'payment', 'notes'])));
+      'multi', 'colours', 'changes', 'purgeG', 'actualCost', 'safetyCost', 'sellingPrice', 'profit', 'marginPct', 'jobStatus', 'payment', 'notes'])));
   $('expBuy').addEventListener('click', () => download('mayafx-purchases-' + today() + '.csv',
     csv(buys.filter(b => !b.deleted), ['date', 'item', 'category', 'amount', 'notes'])));
   $('resetSettings').addEventListener('click', () => {
@@ -832,6 +1157,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.addEventListener('online', flush);
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.btn,.chip,.pchip,.seg button,nav button,.link'); if (!b) return;
+    const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, sp = document.createElement('span');
+    sp.className = 'rip'; sp.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+    b.appendChild(sp); setTimeout(() => sp.remove(), 600);
+  });
+  const sp = $('splash'), hideSplash = () => sp.classList.add('out');
+  sp.addEventListener('click', hideSplash);
+  setTimeout(hideSplash, matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 2900);
   $('pDate').value = today();
   clearForm(); renderAll(); refreshSyncLabel();
   pull();
