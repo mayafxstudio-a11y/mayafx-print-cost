@@ -265,6 +265,14 @@ nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height
 .sp-text span{color:var(--muted);font-weight:400}
 .sp-text b{font-weight:800}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+.mrow{padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;transition:transform .2s var(--ease)}
+.mrow:hover{transform:translateX(4px)}
+.mtop{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.mbar{height:8px;background:var(--chip);margin-top:6px;clip-path:polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)}
+.mbar i{display:block;height:100%;background:var(--ink);animation:grow .7s var(--ease) both}
+.mbar.sp i{background:var(--c4)}
+.mrow small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+@keyframes grow{from{width:0}}
 </style>
 </head>
 <body>
@@ -892,10 +900,11 @@ function monthsList() {
   buys.forEach(b => !b.deleted && set.add(b.month));
   return [...set].filter(Boolean).sort().reverse();
 }
-function fillMonthSelect(id) {
+function fillMonthSelect(id, withAll) {
   const sel = $(id), cur = sel.value || monthOf(today());
-  sel.innerHTML = monthsList().map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
-  sel.value = monthsList().includes(cur) ? cur : monthOf(today());
+  sel.innerHTML = (withAll ? '<option value="all">All time (overall)</option>' : '') +
+    monthsList().map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+  sel.value = (withAll && cur === 'all') || monthsList().includes(cur) ? cur : monthOf(today());
 }
 
 // ---------- render: jobs ----------
@@ -951,10 +960,11 @@ function saveBuy() {
 
 // ---------- render: summary ----------
 function renderSummary() {
-  fillMonthSelect('sumMonth');
-  const m = $('sumMonth').value;
-  const js = jobs.filter(j => !j.deleted && j.month === m);
-  const bs = buys.filter(b => !b.deleted && b.month === m);
+  fillMonthSelect('sumMonth', true);
+  const m = $('sumMonth').value, all = m === 'all';
+  const label = all ? 'All time' : monthLabel(m);
+  const js = jobs.filter(j => !j.deleted && (all || j.month === m));
+  const bs = buys.filter(b => !b.deleted && (all || b.month === m));
   const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
   const revenue = sum(js, j => j.sellingPrice);
   const received = sum(js.filter(j => j.payment === 'Paid'), j => j.sellingPrice);
@@ -971,7 +981,7 @@ function renderSummary() {
       <div class="stat hl"><span>Cash in hand</span><b>${money(cash)}</b></div>
       <div class="stat"><span>Est. profit</span><b class="${profit >= 0 ? 'pos' : 'neg'}">${money(profit)}</b></div>
     </div>
-    <div class="card"><h2>Jobs · ${monthLabel(m)}</h2><table class="sum-list">
+    <div class="card"><h2>Jobs · ${label}</h2><table class="sum-list">
       <tr><td>Jobs</td><td>${js.length}</td></tr>
       <tr><td>Billed (selling price)</td><td>${money(revenue)}</td></tr>
       <tr><td>Received</td><td class="pos">${money(received)}</td></tr>
@@ -984,7 +994,24 @@ function renderSummary() {
       ${Object.keys(byCat).map(c => `<tr><td>${esc(c)}</td><td>${money(byCat[c])}</td></tr>`).join('') || '<tr><td>None</td><td>₹0</td></tr>'}
       <tr><td><b>Total spent</b></td><td>${money(spent)}</td></tr>
     </table>
-    <p class="note">Cash in hand = received − purchases. Est. profit = billed − actual production cost.</p></div>`;
+    <p class="note">Cash in hand = received − purchases. Est. profit = billed − actual production cost.</p></div>` +
+    (all ? monthTable() : '');
+}
+function monthTable() {
+  const ms = monthsList().filter(m => jobs.some(j => !j.deleted && j.month === m) || buys.some(b => !b.deleted && b.month === m));
+  if (!ms.length) return '';
+  const rows = ms.map(m => {
+    const js = jobs.filter(j => !j.deleted && j.month === m), bs = buys.filter(b => !b.deleted && b.month === m);
+    const rev = js.reduce((a, j) => a + j.sellingPrice, 0), pr = rev - js.reduce((a, j) => a + j.actualCost, 0);
+    const sp = bs.reduce((a, b) => a + b.amount, 0);
+    return { m, rev, pr, sp };
+  });
+  const max = Math.max(1, ...rows.map(r => Math.max(r.rev, r.sp)));
+  return `<div class="card"><h2>Month by month</h2>${rows.map(r => `
+    <div class="mrow" data-m="${r.m}"><div class="mtop"><b>${monthLabel(r.m)}</b><span class="${r.pr >= 0 ? 'pos' : 'neg'}">${money(r.pr)}</span></div>
+      <div class="mbar"><i style="width:${r.rev / max * 100}%"></i></div><div class="mbar sp"><i style="width:${r.sp / max * 100}%"></i></div>
+      <small>Revenue ${money(r.rev)} · Spent ${money(r.sp)}</small></div>`).join('')}
+    <p class="note">Black bar = revenue, grey bar = spent, figure = profit. Tap a month to open it.</p></div>`;
 }
 
 // ---------- settings ----------
@@ -1097,6 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('jobMonth').addEventListener('change', renderJobs);
   $('buyMonth').addEventListener('change', renderBuys);
   $('sumMonth').addEventListener('change', renderSummary);
+  $('sumBody').addEventListener('click', e => { const r = e.target.closest('.mrow'); if (r) { $('sumMonth').value = r.dataset.m; renderSummary(); window.scrollTo(0, 0); } });
 
   $('jobList').addEventListener('click', e => {
     const b = e.target.closest('[data-act]'); if (!b) return;
