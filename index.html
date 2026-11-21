@@ -226,6 +226,12 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--ink);box-sh
 .switch i:after{background:var(--ink);width:20px;height:20px;top:3px;left:3px;transition:transform .35s var(--ease),background .2s}
 .switch input:checked+i{background:var(--ink);border-color:var(--ink)}
 .switch input:checked+i:after{background:var(--bg);transform:translateX(20px) scale(1.05)}
+/* multi-printer rows */
+.run{display:grid;grid-template-columns:1fr 1fr 40px;gap:6px;margin:10px 0 14px;align-items:center;padding-bottom:12px;border-bottom:1px dashed var(--line)}
+.run .rp{grid-column:1/-1}
+.run input,.run select{min-width:0;margin:0}
+.run .rx{height:42px;border:1.5px solid var(--line);background:var(--card);border-radius:4px;cursor:pointer;color:var(--ink);font-size:15px}
+input[readonly]{opacity:.75}
 /* printer cards */
 .pchip{border-radius:4px;border:1.5px solid var(--line);background:var(--card);transition:transform .2s var(--ease),border-color .2s,background .2s}
 .pchip:hover{transform:translateY(-3px)}
@@ -307,6 +313,15 @@ nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height
     <label>Client</label><input id="client" list="clientList" placeholder="Client name">
     <datalist id="clientList"></datalist>
     <label>Printer</label><input type="hidden" id="printer"><div class="pchips" id="pchips"></div>
+    <div class="toggle" style="margin-top:8px">
+      <span>More than one printer<small>Split filament &amp; hours per printer</small></span>
+      <label class="switch"><input type="checkbox" id="multiP"><i></i></label>
+    </div>
+    <div id="runsWrap" hidden>
+      <div id="runsList"></div>
+      <button type="button" class="btn block" id="addRun">＋ Add another printer</button>
+      <p class="note">Filament and print time below become totals. Each printer's wear, power and colour unit are charged on its own hours.</p>
+    </div>
   </div>
 
   <div class="card">
@@ -557,14 +572,21 @@ function studioRate(s) {
 }
 
 function calc(inp, s) {
-  const g = num(inp.grams), ph = num(inp.printHrs);
-  const P = findPrinter(s, inp.printer || 'ender');
-  const life = num(P.life);
-  const r = {};
+  // one run per printer used. Old jobs have a single run -> same numbers as before.
+  const runs = (inp.runs && inp.runs.length) ? inp.runs
+    : [{ printer: inp.printer || 'ender', grams: inp.grams, printHrs: inp.printHrs }];
+  const g = runs.reduce((a, x) => a + num(x.grams), 0), ph = runs.reduce((a, x) => a + num(x.printHrs), 0);
+  const multi = bool(inp.multi);
+  const r = { depreciation: 0, electricity: 0, unitWear: 0 };
+  runs.forEach(x => {
+    const P = findPrinter(s, x.printer || 'ender'), h = num(x.printHrs), life = num(P.life);
+    r.depreciation += life > 0 ? h * num(P.price) / life : 0;
+    r.electricity  += bool(s.elecOn) ? h * num(P.watts) / 1000 * num(s.elecRate) : 0;
+    const U = P.unit;   // AMS / CFS: wears only on multicolour jobs
+    r.unitWear     += multi && U && num(U.life) > 0 ? h * num(U.price) / num(U.life) : 0;
+  });
   r.filament      = g * num(s.filamentPerKg) / 1000;
   r.wastage       = bool(s.wastageOn) ? r.filament * num(s.wastagePct) / 100 : 0;
-  r.depreciation  = life > 0 ? ph * num(P.price) / life : 0;
-  r.electricity   = bool(s.elecOn) ? ph * num(P.watts) / 1000 * num(s.elecRate) : 0;
   r.studio        = ph * studioRate(s);
   r.modeling      = num(inp.modelHrs) * num(s.modelRate);
   r.setup         = num(inp.setupHrs) * num(s.setupRate);
@@ -572,12 +594,9 @@ function calc(inp, s) {
   r.paint         = num(inp.paint);
   r.packagingCost = bool(inp.packaging) ? num(s.packaging) : 0;
   // multicolour (all zero when off, so old jobs are unchanged)
-  const multi = bool(inp.multi);
   r.purgeGrams = !multi ? 0 : (String(inp.purgeG ?? '').trim() !== '' ? num(inp.purgeG) : num(inp.changes) * num(s.purgePerChange));
   r.purge      = r.purgeGrams * num(s.filamentPerKg) / 1000;
   r.multiFee   = multi ? Math.max(0, num(inp.colours) - 1) * num(s.multiFeePerColour) : 0;
-  const U = P.unit;   // AMS / CFS: wears only on multicolour jobs
-  r.unitWear   = multi && U && num(U.life) > 0 ? ph * num(U.price) / num(U.life) : 0;
   r.actualCost = r.filament + r.wastage + r.depreciation + r.electricity + r.studio +
                  r.modeling + r.setup + r.post + r.paint + r.packagingCost + r.purge + r.multiFee + r.unitWear;
   r.safetyCost = r.actualCost * num(s.safetyMult);
@@ -615,6 +634,10 @@ const monthLabel = m => { const [y, mo] = m.split('-').map(Number); return new D
 const printerName = id => (getPrinters(settings).find(p => p.id === id) || PRINTERS.find(p => p.id === id) || {}).name || id;
 const SWATCH = ['#e63946', '#f4a261', '#2a9d8f', '#457b9d', '#8e44ad', '#f1c40f', '#1d3557', '#ff70a6'];
 function jobPrinterName(j) {
+  if (j.runs && j.runs.length) {
+    let s = null; try { s = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null; } catch (e) {}
+    return j.runs.map(x => { const p = s && getPrinters(s).find(q => q.id === x.printer); return p ? p.name : printerName(x.printer); }).join(' + ');
+  }
   try { const s = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null;
     const p = s && getPrinters(s).find(x => x.id === j.printer); if (p) return p.name; } catch (e) {}
   return printerName(j.printer);
@@ -705,6 +728,8 @@ function normJob(j) {
   o.multi = !!m;
   o.colours = m ? num(m.colours) : 0; o.changes = m ? num(m.changes) : 0;
   o.purgeG = m ? num(m.purgeG) : 0; o.purgeManual = m ? bool(m.purgeManual) : false;
+  let rr = null; try { rr = o.settingsJson ? JSON.parse(o.settingsJson)._runs : null; } catch (e) {}
+  o.runs = Array.isArray(rr) && rr.length ? rr : null;
   return o;
 }
 function normBuy(b) {
@@ -717,10 +742,39 @@ function normBuy(b) {
 // ---------- calculator ----------
 function activeSettings() { return jobSettings || settings; }
 
+function runOptions(sel) {
+  return getPrinters(activeSettings()).filter(p => !p.archived || p.id === sel)
+    .map(p => `<option value="${esc(p.id)}"${p.id === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+}
+function renderRuns(runs) {
+  $('runsList').innerHTML = runs.map(r => `<div class="run"><select class="rp">${runOptions(r.printer)}</select>
+      <input class="rg" type="number" inputmode="decimal" min="0" step="any" placeholder="Filament (g)" value="${esc(r.grams)}">
+      <input class="rh" type="number" inputmode="decimal" min="0" step="any" placeholder="Time (hrs)" value="${esc(r.printHrs)}">
+      <button type="button" class="rx" aria-label="Remove printer">✕</button></div>`).join('');
+}
+function readRuns() {
+  return [...document.querySelectorAll('#runsList .run')].map(el => ({
+    printer: el.querySelector('.rp').value, grams: el.querySelector('.rg').value, printHrs: el.querySelector('.rh').value }));
+}
+// on: show per-printer rows (runs). off: back to one printer.
+function setRunsMode(on, runs) {
+  $('multiP').checked = on;
+  $('runsWrap').hidden = !on; $('pchips').hidden = on;
+  $('grams').readOnly = on; $('printHrs').readOnly = on;
+  if (on) renderRuns(runs);
+}
 function readInputs() {
+  let grams = $('grams').value, printHrs = $('printHrs').value, printer = $('printer').value, runs = null;
+  if ($('multiP').checked && readRuns().length) {
+    runs = readRuns();
+    const sum = k => +runs.reduce((a, x) => a + num(x[k]), 0).toFixed(4);
+    grams = sum('grams') || ''; printHrs = sum('printHrs') || '';
+    $('grams').value = grams; $('printHrs').value = printHrs;
+    if (runs[0]) printer = runs[0].printer;
+  }
   return {
-    mode, printer: $('printer').value,
-    grams: $('grams').value, printHrs: $('printHrs').value,
+    mode, printer, runs,
+    grams, printHrs,
     modelHrs: $('modelHrs').value, setupHrs: $('setupHrs').value, postHrs: $('postHrs').value,
     paint: $('paint').value, packaging: $('packaging').checked, scanning: $('scanning').checked,
     sellingPrice: $('sellingPrice').value,
@@ -754,13 +808,15 @@ function setMode(m) {
 
 function update() {
   const s = activeSettings(), inp = readInputs(), r = calc(inp, s);
-  const ph = num(inp.printHrs), P = findPrinter(s, inp.printer);
-  const life = num(P.life), U = P.unit;
+  const ph = num(inp.printHrs);
+  const rp = (inp.runs || [{ printer: inp.printer, printHrs: inp.printHrs }]).map(x => ({ P: findPrinter(s, x.printer), h: num(x.printHrs) }));
+  const P = rp[0].P, life = num(P.life), U = rp.length === 1 ? P.unit : null;
+  const many = rp.length > 1, perHr = Q => (num(Q.life) ? num(Q.price) / num(Q.life) : 0).toFixed(2);
   const lines = [
     ['Filament', `${num(inp.grams)} g × ₹${num(s.filamentPerKg)}/kg`, r.filament, 'mat'],
     ['Wastage', bool(s.wastageOn) ? `${num(s.wastagePct)}% of filament` : 'off in settings', r.wastage, 'mat'],
-    ['Machine wear', `${ph} h × ₹${(life ? num(P.price) / life : 0).toFixed(2)}/h`, r.depreciation, 'mach'],
-    ['Electricity', bool(s.elecOn) ? `${ph} h × ${num(P.watts)} W × ₹${num(s.elecRate)}/kWh` : 'off in settings', r.electricity, 'mach'],
+    ['Machine wear', many ? rp.map(x => `${x.P.name}: ${x.h} h × ₹${perHr(x.P)}/h`).join(' · ') : `${ph} h × ₹${(life ? num(P.price) / life : 0).toFixed(2)}/h`, r.depreciation, 'mach'],
+    ['Electricity', !bool(s.elecOn) ? 'off in settings' : many ? rp.map(x => `${x.P.name}: ${x.h} h × ${num(x.P.watts)} W`).join(' · ') + ` × ₹${num(s.elecRate)}/kWh` : `${ph} h × ${num(P.watts)} W × ₹${num(s.elecRate)}/kWh`, r.electricity, 'mach'],
     ['Studio time', `${ph} h × ₹${studioRate(s).toFixed(2)}/h`, r.studio, 'studio'],
     ['Modeling', `${num(inp.modelHrs)} h × ₹${num(s.modelRate)}`, r.modeling, 'lab'],
     ['Setup', `${num(inp.setupHrs)} h × ₹${num(s.setupRate)}`, r.setup, 'lab'],
@@ -771,14 +827,17 @@ function update() {
   if (inp.multi) {
     lines.splice(2, 0, ['Colour purge', `${+r.purgeGrams.toFixed(2)} g × ₹${num(s.filamentPerKg)}/kg`, r.purge, 'mat']);
     if (U) lines.splice(4, 0, [`${U.name || 'Colour unit'} wear`, `${ph} h × ₹${(num(U.life) ? num(U.price) / num(U.life) : 0).toFixed(2)}/h`, r.unitWear, 'mach']);
+    else if (many && r.unitWear > 0) lines.splice(4, 0, ['Colour unit wear', rp.filter(x => x.P.unit).map(x => `${x.P.unit.name || 'Unit'} on ${x.P.name}: ${x.h} h`).join(' · '), r.unitWear, 'mach']);
     lines.push(['Multicolour fee', `${Math.max(0, num(inp.colours) - 1)} extra colour(s) × ₹${num(s.multiFeePerColour)}`, r.multiFee, 'extra']);
   }
   $('multiWrap').hidden = !inp.multi;
   const nc = Math.min(16, Math.max(0, Math.round(num(inp.colours))));
   $('swatches').innerHTML = Array.from({ length: nc }, (_, i) => `<i style="background:${SWATCH[i % SWATCH.length]}"></i>`).join('');
-  $('unitHint').textContent = !U ? 'This printer has no colour unit — manual filament swaps.'
+  const units = rp.filter(x => x.P.unit);
+  $('unitHint').textContent = many ? (units.length ? units.map(x => `${x.P.name}: ${x.P.unit.name || 'unit'} · ${num(x.P.unit.slots)} slots`).join(' | ') : 'None of these printers has a colour unit — manual filament swaps.')
+    : !U ? 'This printer has no colour unit — manual filament swaps.'
     : nc > num(U.slots) ? `⚠ ${nc} colours but ${U.name} has ${num(U.slots)} slots` : `${U.name} · ${num(U.slots)} slots`;
-  $('unitHint').className = 'note' + (U && nc > num(U.slots) ? ' neg' : '');
+  $('unitHint').className = 'note' + (U && !many && nc > num(U.slots) ? ' neg' : '');
   fillPrinterSelect();
   const tot = r.actualCost || 1;
   $('costbar').innerHTML = lines.filter(l => l[2] > 0).map(l =>
@@ -818,6 +877,7 @@ function clearForm() {
   $('date').value = today();
   $('packaging').checked = false; $('scanning').checked = false;
   $('multi').checked = false; ['colours', 'changes', 'purgeG'].forEach(id => $(id).value = '');
+  setRunsMode(false);
   $('jobStatus').value = 'Not started'; $('payment').value = 'Unpaid';
   $('saveBtn').textContent = 'Save job';
   fillPrinterSelect();
@@ -828,7 +888,7 @@ function openJob(id) {
   const j = jobs.find(x => x.id === id); if (!j) return;
   editingId = id;
   try { jobSettings = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null; } catch (e) { jobSettings = null; }
-  if (jobSettings) delete jobSettings._multi;
+  if (jobSettings) { delete jobSettings._multi; delete jobSettings._runs; }
   fillPrinterSelect();
   $('srNo').value = j.srNo; $('date').value = j.date; $('project').value = j.project || ''; $('client').value = j.client || '';
   $('printer').value = j.printer || 'ender';
@@ -839,6 +899,7 @@ function openJob(id) {
   $('colours').value = j.multi ? (j.colours || '') : '';
   $('changes').value = j.multi ? (j.changes || '') : '';
   $('purgeG').value = j.multi && j.purgeManual ? j.purgeG : '';
+  setRunsMode(!!j.runs, j.runs);
   $('jobStatus').value = j.jobStatus || 'Not started'; $('payment').value = j.payment || 'Unpaid';
   $('notes').value = j.notes || '';
   $('editText').textContent = jobSettings ? `Editing #${j.srNo} · using rates saved with this job` : `Editing #${j.srNo}`;
@@ -870,7 +931,9 @@ function saveJob() {
     purgeG: Math.round(r.purgeGrams * 100) / 100, purgeManual: !!inp.multi && String(inp.purgeG).trim() !== '',
     settingsJson: JSON.stringify(Object.assign({}, s, { _multi: inp.multi ? {
       colours: num(inp.colours), changes: num(inp.changes), purgeG: Math.round(r.purgeGrams * 100) / 100,
-      purgeManual: String(inp.purgeG).trim() !== '' } : null })), deleted: false,
+      purgeManual: String(inp.purgeG).trim() !== '' } : null,
+      _runs: inp.runs ? inp.runs.map(x => ({ printer: x.printer, grams: num(x.grams), printHrs: num(x.printHrs) })) : null })),
+    runs: inp.runs ? inp.runs.map(x => ({ printer: x.printer, grams: num(x.grams), printHrs: num(x.printHrs) })) : null, deleted: false,
     createdAt: existing ? existing.createdAt : now, updatedAt: now
   });
   ['filament', 'wastage', 'depreciation', 'electricity', 'studio', 'modeling', 'setup', 'post',
@@ -1045,7 +1108,7 @@ function savePrinters(list, rerender) {
   settings.printersJson = JSON.stringify(list);
   store(LS.settings, settings);
   if (rerender) renderPrinterSettings();
-  if (!jobSettings) { fillPrinterSelect(); update(); }
+  if (!jobSettings) { if ($('multiP').checked) renderRuns(readRuns()); fillPrinterSelect(); update(); }
   clearTimeout(settingsTimer);
   settingsTimer = setTimeout(() => enqueue({ action: 'saveSettings', settings }), 800);
 }
@@ -1118,6 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('useCurrent').addEventListener('click', () => {
     jobSettings = null; $('useCurrent').hidden = true;
     $('editText').textContent = $('editText').textContent.replace('using rates saved with this job', 'using current rates');
+    if ($('multiP').checked) renderRuns(readRuns());
     fillPrinterSelect(); update();
   });
 
@@ -1154,6 +1218,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const list = getPrinters(settings);
     list.push({ id: 'p' + uid(), name: 'New printer', price: 20000, life: 3000, watts: 100, unit: null, archived: false });
     savePrinters(list, true); toast('Printer added — set its name and price');
+  });
+  $('multiP').addEventListener('change', () => {
+    if ($('multiP').checked) {
+      const list = getPrinters(activeSettings()).filter(p => !p.archived), cur = $('printer').value;
+      const other = (list.find(p => p.id !== cur) || list[0] || {}).id || cur;
+      setRunsMode(true, [{ printer: cur, grams: $('grams').value, printHrs: $('printHrs').value }, { printer: other, grams: '', printHrs: '' }]);
+    } else {
+      const first = readRuns()[0]; if (first) $('printer').value = first.printer;
+      setRunsMode(false); fillPrinterSelect();
+    }
+  });
+  $('addRun').addEventListener('click', () => {
+    const runs = readRuns(), used = new Set(runs.map(x => x.printer));
+    const list = getPrinters(activeSettings()).filter(p => !p.archived);
+    runs.push({ printer: (list.find(p => !used.has(p.id)) || list[0] || {}).id || '', grams: '', printHrs: '' });
+    renderRuns(runs); update();
+  });
+  $('runsList').addEventListener('click', e => {
+    const b = e.target.closest('.rx'); if (!b) return;
+    const runs = readRuns(), i = [...document.querySelectorAll('#runsList .run')].indexOf(b.closest('.run'));
+    if (runs.length < 2) return toast('Keep at least one printer');
+    runs.splice(i, 1); renderRuns(runs); update();
   });
   $('pchips').addEventListener('click', e => {
     const b = e.target.closest('[data-pid]'); if (!b) return;
