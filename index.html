@@ -85,6 +85,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .empty{text-align:center;color:var(--muted);padding:30px 10px}
 .monthbar{display:flex;gap:10px;align-items:center;margin-bottom:12px}
 .monthbar select{flex:1}
+.jfilters{gap:6px}.jfilters select{min-width:0;padding-left:8px;padding-right:4px;font-size:14px}
 nav{position:fixed;bottom:0;left:0;right:0;z-index:5;background:var(--card);border-top:1px solid var(--line);
   display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 nav button{border:0;background:none;font:inherit;font-size:11px;color:var(--muted);padding:9px 2px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
@@ -401,6 +402,12 @@ nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height
 <!-- ============ JOBS ============ -->
 <section class="tab" id="t-jobs">
   <div class="monthbar"><select id="jobMonth"></select></div>
+  <div class="monthbar jfilters">
+    <select id="fPay" aria-label="Payment"><option value="">All payments</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option></select>
+    <select id="fStatus" aria-label="Job status"><option value="">All status</option><option value="Not started">Not started</option><option value="Printing">Printing</option><option value="Done">Done</option></select>
+    <select id="fClient" aria-label="Client"></select>
+  </div>
+  <p class="note" id="jobSummary"></p>
   <div id="jobList"></div>
 </section>
 
@@ -972,10 +979,28 @@ function fillMonthSelect(id, withAll) {
 
 // ---------- render: jobs ----------
 function renderJobs() {
-  fillMonthSelect('jobMonth');
-  const m = $('jobMonth').value;
-  const list = jobs.filter(j => !j.deleted && j.month === m).sort((a, b) => b.srNo - a.srNo);
-  if (!list.length) { $('jobList').innerHTML = `<div class="empty">No jobs in ${monthLabel(m)} yet.</div>`; return; }
+  fillMonthSelect('jobMonth', true);
+  const m = $('jobMonth').value, live = jobs.filter(j => !j.deleted);
+  // client filter: every client seen so far (keeps the pick if still there)
+  const clients = [...new Set(live.map(j => j.client).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const curC = $('fClient').value;
+  $('fClient').innerHTML = '<option value="">All clients</option>' +
+    clients.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('') +
+    (live.some(j => !j.client) ? '<option value="__none">(no client)</option>' : '');
+  $('fClient').value = [...$('fClient').options].some(o => o.value === curC) ? curC : '';
+  const fp = $('fPay').value, fs = $('fStatus').value, fc = $('fClient').value;
+  const inMonth = live.filter(j => m === 'all' || j.month === m);
+  const list = inMonth.filter(j =>
+      (!fp || (j.payment || 'Unpaid') === fp) &&
+      (!fs || (j.jobStatus || 'Not started') === fs) &&
+      (!fc || (fc === '__none' ? !j.client : j.client === fc)))
+    .sort((a, b) => b.srNo - a.srNo);
+  const sum = k => list.reduce((a, j) => a + num(j[k]), 0);
+  const unpaid = list.filter(j => (j.payment || 'Unpaid') !== 'Paid').reduce((a, j) => a + num(j.sellingPrice), 0);
+  $('jobSummary').textContent = list.length
+    ? `${list.length} job${list.length > 1 ? 's' : ''} · Sales ${money(sum('sellingPrice'))} · Profit ${money(sum('profit'))} · Unpaid ${money(unpaid)}` : '';
+  if (!list.length) {
+    $('jobList').innerHTML = `<div class="empty">${inMonth.length ? 'No jobs match these filters.' : (m === 'all' ? 'No jobs yet.' : `No jobs in ${monthLabel(m)} yet.`)}</div>`; return; }
   $('jobList').innerHTML = list.map(j => {
     const st = (j.jobStatus || 'Not started'), py = (j.payment || 'Unpaid');
     return `<div class="job">
@@ -1186,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   $('jobMonth').addEventListener('change', renderJobs);
+  ['fPay', 'fStatus', 'fClient'].forEach(id => $(id).addEventListener('change', renderJobs));
   $('buyMonth').addEventListener('change', renderBuys);
   $('sumMonth').addEventListener('change', renderSummary);
   $('sumBody').addEventListener('click', e => { const r = e.target.closest('.mrow'); if (r) { $('sumMonth').value = r.dataset.m; renderSummary(); window.scrollTo(0, 0); } });
