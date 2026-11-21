@@ -327,6 +327,8 @@ nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height
 
   <div class="card">
     <h2>Print</h2>
+    <label>Pieces (same model)</label><input id="qty" type="number" inputmode="numeric" min="1" step="1" placeholder="1">
+    <p class="note" id="qtyHint" hidden></p>
     <div class="row">
       <div><label>Filament (g)</label><input id="grams" type="number" inputmode="decimal" min="0" step="any"></div>
       <div><label>Print time (hrs)</label><input id="printHrs" type="number" inputmode="decimal" min="0" step="any"></div>
@@ -375,7 +377,7 @@ nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height
 
   <div class="card">
     <h2>Profit</h2>
-    <div id="sellWrap"><label>Selling price (₹)</label><input id="sellingPrice" type="number" inputmode="decimal" min="0" step="any" placeholder="What you charge"></div>
+    <div id="sellWrap"><label id="sellLbl">Selling price (₹)</label><input id="sellingPrice" type="number" inputmode="decimal" min="0" step="any" placeholder="What you charge"></div>
     <div id="museumPriceWrap" hidden>
       <table class="bd" id="museumBd"></table>
     </div>
@@ -383,6 +385,7 @@ nav button.on:after{content:"";position:absolute;top:0;left:30%;right:30%;height
       <div class="stat hl"><span>Selling price</span><b id="oSell">₹0</b></div>
       <div class="stat"><span>Profit · margin</span><b id="oProfit">₹0</b></div>
     </div>
+    <p class="note" id="perPiece" hidden></p>
   </div>
 
   <div class="card">
@@ -582,11 +585,14 @@ function calc(inp, s) {
   // one run per printer used. Old jobs have a single run -> same numbers as before.
   const runs = (inp.runs && inp.runs.length) ? inp.runs
     : [{ printer: inp.printer || 'ender', grams: inp.grams, printHrs: inp.printHrs }];
-  const g = runs.reduce((a, x) => a + num(x.grams), 0), ph = runs.reduce((a, x) => a + num(x.printHrs), 0);
+  // Inputs are for ONE piece. qty copies of it multiply print, post-processing, painting and purge;
+  // modeling, setup, packaging and the scan fee are charged once per job.
+  const q = Math.max(1, Math.round(num(inp.qty)) || 1);
+  const g = runs.reduce((a, x) => a + num(x.grams), 0) * q, ph = runs.reduce((a, x) => a + num(x.printHrs), 0) * q;
   const multi = bool(inp.multi);
-  const r = { depreciation: 0, electricity: 0, unitWear: 0 };
+  const r = { qty: q, depreciation: 0, electricity: 0, unitWear: 0 };
   runs.forEach(x => {
-    const P = findPrinter(s, x.printer || 'ender'), h = num(x.printHrs), life = num(P.life);
+    const P = findPrinter(s, x.printer || 'ender'), h = num(x.printHrs) * q, life = num(P.life);
     r.depreciation += life > 0 ? h * num(P.price) / life : 0;
     r.electricity  += bool(s.elecOn) ? h * num(P.watts) / 1000 * num(s.elecRate) : 0;
     const U = P.unit;   // AMS / CFS: wears only on multicolour jobs
@@ -597,13 +603,13 @@ function calc(inp, s) {
   r.studio        = ph * studioRate(s);
   r.modeling      = num(inp.modelHrs) * num(s.modelRate);
   r.setup         = num(inp.setupHrs) * num(s.setupRate);
-  r.post          = num(inp.postHrs) * num(s.postRate);
-  r.paint         = num(inp.paint);
+  r.post          = num(inp.postHrs) * q * num(s.postRate);
+  r.paint         = num(inp.paint) * q;
   r.packagingCost = bool(inp.packaging) ? num(s.packaging) : 0;
   // multicolour (all zero when off, so old jobs are unchanged)
-  r.purgeGrams = !multi ? 0 : (String(inp.purgeG ?? '').trim() !== '' ? num(inp.purgeG) : num(inp.changes) * num(s.purgePerChange));
+  r.purgeGrams = !multi ? 0 : (String(inp.purgeG ?? '').trim() !== '' ? num(inp.purgeG) : num(inp.changes) * num(s.purgePerChange)) * q;
   r.purge      = r.purgeGrams * num(s.filamentPerKg) / 1000;
-  r.multiFee   = multi ? Math.max(0, num(inp.colours) - 1) * num(s.multiFeePerColour) : 0;
+  r.multiFee   = multi ? Math.max(0, num(inp.colours) - 1) * num(s.multiFeePerColour) * q : 0;
   r.actualCost = r.filament + r.wastage + r.depreciation + r.electricity + r.studio +
                  r.modeling + r.setup + r.post + r.paint + r.packagingCost + r.purge + r.multiFee + r.unitWear;
   r.safetyCost = r.actualCost * num(s.safetyMult);
@@ -737,6 +743,8 @@ function normJob(j) {
   o.purgeG = m ? num(m.purgeG) : 0; o.purgeManual = m ? bool(m.purgeManual) : false;
   let rr = null; try { rr = o.settingsJson ? JSON.parse(o.settingsJson)._runs : null; } catch (e) {}
   o.runs = Array.isArray(rr) && rr.length ? rr : null;
+  let qq = 1; try { qq = o.settingsJson ? num(JSON.parse(o.settingsJson)._qty) || 1 : 1; } catch (e) {}
+  o.qty = qq;
   return o;
 }
 function normBuy(b) {
@@ -780,7 +788,7 @@ function readInputs() {
     if (runs[0]) printer = runs[0].printer;
   }
   return {
-    mode, printer, runs,
+    mode, printer, runs, qty: $('qty').value,
     grams, printHrs,
     modelHrs: $('modelHrs').value, setupHrs: $('setupHrs').value, postHrs: $('postHrs').value,
     paint: $('paint').value, packaging: $('packaging').checked, scanning: $('scanning').checked,
@@ -815,27 +823,27 @@ function setMode(m) {
 
 function update() {
   const s = activeSettings(), inp = readInputs(), r = calc(inp, s);
-  const ph = num(inp.printHrs);
+  const ph = num(inp.printHrs), q = r.qty, px = q > 1 ? ` × ${q} pcs` : '';
   const rp = (inp.runs || [{ printer: inp.printer, printHrs: inp.printHrs }]).map(x => ({ P: findPrinter(s, x.printer), h: num(x.printHrs) }));
   const P = rp[0].P, life = num(P.life), U = rp.length === 1 ? P.unit : null;
   const many = rp.length > 1, perHr = Q => (num(Q.life) ? num(Q.price) / num(Q.life) : 0).toFixed(2);
   const lines = [
-    ['Filament', `${num(inp.grams)} g × ₹${num(s.filamentPerKg)}/kg`, r.filament, 'mat'],
+    ['Filament', `${num(inp.grams)} g${px} × ₹${num(s.filamentPerKg)}/kg`, r.filament, 'mat'],
     ['Wastage', bool(s.wastageOn) ? `${num(s.wastagePct)}% of filament` : 'off in settings', r.wastage, 'mat'],
-    ['Machine wear', many ? rp.map(x => `${x.P.name}: ${x.h} h × ₹${perHr(x.P)}/h`).join(' · ') : `${ph} h × ₹${(life ? num(P.price) / life : 0).toFixed(2)}/h`, r.depreciation, 'mach'],
-    ['Electricity', !bool(s.elecOn) ? 'off in settings' : many ? rp.map(x => `${x.P.name}: ${x.h} h × ${num(x.P.watts)} W`).join(' · ') + ` × ₹${num(s.elecRate)}/kWh` : `${ph} h × ${num(P.watts)} W × ₹${num(s.elecRate)}/kWh`, r.electricity, 'mach'],
-    ['Studio time', `${ph} h × ₹${studioRate(s).toFixed(2)}/h`, r.studio, 'studio'],
+    ['Machine wear', many ? rp.map(x => `${x.P.name}: ${x.h} h${px} × ₹${perHr(x.P)}/h`).join(' · ') : `${ph} h${px} × ₹${(life ? num(P.price) / life : 0).toFixed(2)}/h`, r.depreciation, 'mach'],
+    ['Electricity', !bool(s.elecOn) ? 'off in settings' : many ? rp.map(x => `${x.P.name}: ${x.h} h${px} × ${num(x.P.watts)} W`).join(' · ') + ` × ₹${num(s.elecRate)}/kWh` : `${ph} h${px} × ${num(P.watts)} W × ₹${num(s.elecRate)}/kWh`, r.electricity, 'mach'],
+    ['Studio time', `${ph} h${px} × ₹${studioRate(s).toFixed(2)}/h`, r.studio, 'studio'],
     ['Modeling', `${num(inp.modelHrs)} h × ₹${num(s.modelRate)}`, r.modeling, 'lab'],
     ['Setup', `${num(inp.setupHrs)} h × ₹${num(s.setupRate)}`, r.setup, 'lab'],
-    ['Post-processing', `${num(inp.postHrs)} h × ₹${num(s.postRate)}`, r.post, 'lab'],
-    ['External painting', 'entered', r.paint, 'extra'],
+    ['Post-processing', `${num(inp.postHrs)} h${px} × ₹${num(s.postRate)}`, r.post, 'lab'],
+    ['External painting', 'entered' + px, r.paint, 'extra'],
     ['Packaging', inp.packaging ? 'fixed' : 'not used', r.packagingCost, 'extra']
   ];
   if (inp.multi) {
-    lines.splice(2, 0, ['Colour purge', `${+r.purgeGrams.toFixed(2)} g × ₹${num(s.filamentPerKg)}/kg`, r.purge, 'mat']);
-    if (U) lines.splice(4, 0, [`${U.name || 'Colour unit'} wear`, `${ph} h × ₹${(num(U.life) ? num(U.price) / num(U.life) : 0).toFixed(2)}/h`, r.unitWear, 'mach']);
-    else if (many && r.unitWear > 0) lines.splice(4, 0, ['Colour unit wear', rp.filter(x => x.P.unit).map(x => `${x.P.unit.name || 'Unit'} on ${x.P.name}: ${x.h} h`).join(' · '), r.unitWear, 'mach']);
-    lines.push(['Multicolour fee', `${Math.max(0, num(inp.colours) - 1)} extra colour(s) × ₹${num(s.multiFeePerColour)}`, r.multiFee, 'extra']);
+    lines.splice(2, 0, ['Colour purge', `${+(r.purgeGrams / q).toFixed(2)} g${px} × ₹${num(s.filamentPerKg)}/kg`, r.purge, 'mat']);
+    if (U) lines.splice(4, 0, [`${U.name || 'Colour unit'} wear`, `${ph} h${px} × ₹${(num(U.life) ? num(U.price) / num(U.life) : 0).toFixed(2)}/h`, r.unitWear, 'mach']);
+    else if (many && r.unitWear > 0) lines.splice(4, 0, ['Colour unit wear', rp.filter(x => x.P.unit).map(x => `${x.P.unit.name || 'Unit'} on ${x.P.name}: ${x.h} h${px}`).join(' · '), r.unitWear, 'mach']);
+    lines.push(['Multicolour fee', `${Math.max(0, num(inp.colours) - 1)} extra colour(s)${px} × ₹${num(s.multiFeePerColour)}`, r.multiFee, 'extra']);
   }
   $('multiWrap').hidden = !inp.multi;
   const nc = Math.min(16, Math.max(0, Math.round(num(inp.colours))));
@@ -850,7 +858,7 @@ function update() {
   $('costbar').innerHTML = lines.filter(l => l[2] > 0).map(l =>
     `<span title="${esc(l[0])}" style="flex:${l[2] / tot};background:${PCOL[l[3]]}"></span>`).join('');
   $('multiHint').textContent = String(inp.purgeG).trim() === ''
-    ? `Auto: ${num(inp.changes)} changes × ${num(s.purgePerChange)} g = ${+r.purgeGrams.toFixed(2)} g`
+    ? `Auto: ${num(inp.changes)} changes × ${num(s.purgePerChange)} g = ${+(r.purgeGrams / q).toFixed(2)} g per piece`
     : 'Using slicer purge grams';
   $('breakdown').innerHTML = lines.map(([n, d, v, c]) =>
     `<tr class="${v ? '' : 'zero'}"><td><i class="dot" style="background:${PCOL[c]}"></i>${esc(n)}<small>${esc(d)}</small></td><td>${money(v)}</td></tr>`).join('');
@@ -860,9 +868,15 @@ function update() {
   $('packHint').textContent = '₹' + num(s.packaging) + ' per job';
   $('scanHint').textContent = '₹' + num(s.scanFee) + ' when scanning was done';
   $('museumBd').innerHTML =
-    `<tr><td>Print<small>${num(inp.grams)} g × ₹${num(s.museumPerGram)}/g</small></td><td>${money(num(inp.grams) * num(s.museumPerGram))}</td></tr>` +
+    `<tr><td>Print<small>${num(inp.grams)} g${px} × ₹${num(s.museumPerGram)}/g</small></td><td>${money(num(inp.grams) * q * num(s.museumPerGram))}</td></tr>` +
     `<tr class="${r.scanFee ? '' : 'zero'}"><td>Scanning</td><td>${money(r.scanFee)}</td></tr>`;
   $('oSell').textContent = money(r.sellingPrice);
+  $('sellLbl').textContent = q > 1 ? `Selling price — total for all ${q} pieces (₹)` : 'Selling price (₹)';
+  $('qtyHint').hidden = q < 2; $('perPiece').hidden = q < 2;
+  if (q > 1) {
+    $('qtyHint').textContent = `${q} pieces = ${+(num(inp.grams) * q).toFixed(2)} g and ${+(ph).toFixed(2)} h in total. Filament, print time, post-processing and painting are per piece; modeling, setup and packaging are once.`;
+    $('perPiece').textContent = `Per piece: cost ${money(r.actualCost / q)} · price ${money(r.sellingPrice / q)} · profit ${money(r.profit / q)}`;
+  }
   const pr = $('oProfit');
   pr.innerHTML = money(r.profit) + (r.marginPct == null ? ' · —' : ' · ' + r.marginPct.toFixed(0) + '%');
   pr.className = r.sellingPrice ? (r.profit >= 0 ? 'pos' : 'neg') : '';
@@ -878,7 +892,7 @@ function nextSrNo() { return jobs.reduce((m, j) => Math.max(m, num(j.srNo)), 0) 
 function clearForm() {
   editingId = null; jobSettings = null;
   $('editBanner').hidden = true;
-  ['project', 'client', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint', 'sellingPrice', 'notes']
+  ['project', 'client', 'qty', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint', 'sellingPrice', 'notes']
     .forEach(id => $(id).value = '');
   $('srNo').value = nextSrNo();
   $('date').value = today();
@@ -895,11 +909,15 @@ function openJob(id) {
   const j = jobs.find(x => x.id === id); if (!j) return;
   editingId = id;
   try { jobSettings = j.settingsJson ? Object.assign({}, DEFAULTS, JSON.parse(j.settingsJson)) : null; } catch (e) { jobSettings = null; }
-  if (jobSettings) { delete jobSettings._multi; delete jobSettings._runs; }
+  if (jobSettings) { delete jobSettings._multi; delete jobSettings._runs; delete jobSettings._qty; }
   fillPrinterSelect();
   $('srNo').value = j.srNo; $('date').value = j.date; $('project').value = j.project || ''; $('client').value = j.client || '';
   $('printer').value = j.printer || 'ender';
-  ['grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint'].forEach(k => $(k).value = j[k] || '');
+  // columns hold totals for all pieces; the form works per piece
+  const jq = Math.max(1, num(j.qty) || 1);
+  $('qty').value = jq > 1 ? jq : '';
+  ['grams', 'printHrs', 'postHrs', 'paint'].forEach(k => $(k).value = j[k] ? +(num(j[k]) / jq).toFixed(4) : '');
+  ['modelHrs', 'setupHrs'].forEach(k => $(k).value = j[k] || '');
   $('sellingPrice').value = j.mode === 'museum' ? '' : (j.sellingPrice || '');
   $('packaging').checked = j.packaging; $('scanning').checked = j.scanning;
   $('multi').checked = !!j.multi;
@@ -930,15 +948,17 @@ function saveJob() {
     date, month: monthOf(date),
     project: $('project').value.trim(), client: $('client').value.trim(),
     mode, printer: inp.printer,
-    grams: num(inp.grams), printHrs: num(inp.printHrs), modelHrs: num(inp.modelHrs),
-    setupHrs: num(inp.setupHrs), postHrs: num(inp.postHrs), paint: num(inp.paint),
+    qty: r.qty,
+    grams: Math.round(num(inp.grams) * r.qty * 10000) / 10000, printHrs: Math.round(num(inp.printHrs) * r.qty * 10000) / 10000, modelHrs: num(inp.modelHrs),
+    setupHrs: num(inp.setupHrs), postHrs: Math.round(num(inp.postHrs) * r.qty * 10000) / 10000, paint: Math.round(num(inp.paint) * r.qty * 100) / 100,
     packaging: inp.packaging, scanning: mode === 'museum' && inp.scanning,
     jobStatus: $('jobStatus').value, payment: $('payment').value, notes: $('notes').value.trim(),
     multi: !!inp.multi, colours: inp.multi ? num(inp.colours) : 0, changes: inp.multi ? num(inp.changes) : 0,
-    purgeG: Math.round(r.purgeGrams * 100) / 100, purgeManual: !!inp.multi && String(inp.purgeG).trim() !== '',
+    purgeG: Math.round(r.purgeGrams / r.qty * 100) / 100, purgeManual: !!inp.multi && String(inp.purgeG).trim() !== '',
     settingsJson: JSON.stringify(Object.assign({}, s, { _multi: inp.multi ? {
-      colours: num(inp.colours), changes: num(inp.changes), purgeG: Math.round(r.purgeGrams * 100) / 100,
+      colours: num(inp.colours), changes: num(inp.changes), purgeG: Math.round(r.purgeGrams / r.qty * 100) / 100,
       purgeManual: String(inp.purgeG).trim() !== '' } : null,
+      _qty: r.qty > 1 ? r.qty : null,
       _runs: inp.runs ? inp.runs.map(x => ({ printer: x.printer, grams: num(x.grams), printHrs: num(x.printHrs) })) : null })),
     runs: inp.runs ? inp.runs.map(x => ({ printer: x.printer, grams: num(x.grams), printHrs: num(x.printHrs) })) : null, deleted: false,
     createdAt: existing ? existing.createdAt : now, updatedAt: now
@@ -1006,7 +1026,7 @@ function renderJobs() {
     return `<div class="job">
       <div class="top">
         <div><div class="ttl">#${j.srNo} · ${esc(j.project)}</div>
-          <div class="meta">${esc(j.client || '—')} · ${esc(j.date)} · ${esc(jobPrinterName(j))}${j.mode === 'museum' ? ' · per-gram' : ''}${j.multi ? ' · ' + (j.colours || '?') + ' colours' : ''}</div></div>
+          <div class="meta">${esc(j.client || '—')} · ${esc(j.date)} · ${esc(jobPrinterName(j))}${num(j.qty) > 1 ? ' · ×' + num(j.qty) + ' pcs' : ''}${j.mode === 'museum' ? ' · per-gram' : ''}${j.multi ? ' · ' + (j.colours || '?') + ' colours' : ''}</div></div>
         <div class="money">${money(j.sellingPrice)}<small class="${j.profit >= 0 ? 'pos' : 'neg'}">${money(j.profit)}</small></div>
       </div>
       <div class="chips">
@@ -1285,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('sync').addEventListener('click', pull);
   $('expJobs').addEventListener('click', () => download('mayafx-jobs-' + today() + '.csv',
-    csv(jobs.filter(j => !j.deleted), ['srNo', 'date', 'project', 'client', 'mode', 'printer', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint',
+    csv(jobs.filter(j => !j.deleted), ['srNo', 'date', 'project', 'client', 'mode', 'printer', 'qty', 'grams', 'printHrs', 'modelHrs', 'setupHrs', 'postHrs', 'paint',
       'filament', 'wastage', 'depreciation', 'electricity', 'studio', 'modeling', 'setup', 'post', 'packagingCost', 'scanFee',
       'multi', 'colours', 'changes', 'purgeG', 'actualCost', 'safetyCost', 'sellingPrice', 'profit', 'marginPct', 'jobStatus', 'payment', 'notes'])));
   $('expBuy').addEventListener('click', () => download('mayafx-purchases-' + today() + '.csv',
